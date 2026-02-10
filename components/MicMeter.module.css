@@ -1,0 +1,31 @@
+.wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.meter {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #ece6dc;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  transition: width 90ms linear;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.warningList {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--warn);
+  font-size: 0.92rem;
+}

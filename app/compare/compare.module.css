@@ -1,0 +1,13 @@
+.header {
+  margin-bottom: 12px;
+}
+
+.controls {
+  display: grid;
+  gap: 10px;
+}
+
+.recommendation {
+  margin: 0;
+  line-height: 1.4;
+}

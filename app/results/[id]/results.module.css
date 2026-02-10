@@ -1,0 +1,8 @@
+.header {
+  margin-bottom: 12px;
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+}

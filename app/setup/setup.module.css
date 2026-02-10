@@ -1,0 +1,19 @@
+.header {
+  margin-bottom: 12px;
+}
+
+.row {
+  display: grid;
+  gap: 12px;
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.links {
+  display: grid;
+  gap: 8px;
+}

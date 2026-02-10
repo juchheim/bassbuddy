@@ -1,0 +1,23 @@
+.wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.line {
+  margin: 0;
+}
+
+.badge {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #ffffff;
+  font-weight: 700;
+}
+
+.problemList {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
