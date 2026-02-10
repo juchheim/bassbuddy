@@ -1,0 +1,103 @@
+# BassBuddy (MVP)
+
+BassBuddy is a browser-based **Sub Placement Coach** that uses a phone/laptop microphone to compare bass smoothness at a listening position.
+
+This MVP is intentionally relative and decision-focused:
+- Measure one run quickly.
+- Compare A vs B placements.
+- Compare phase 0 vs 180.
+- Get a clear winner with plain-English guidance.
+
+## What This MVP Does
+- Requests microphone input with processing disabled when possible (`echoCancellation`, `noiseSuppression`, `autoGainControl` set false).
+- Detects a 1 kHz sync beep from the test track.
+- Measures known bass tone segments with Goertzel analysis.
+- Normalizes to per-run relative dB (median-centered).
+- Computes smoothness score, worst peak/dip, deep-dip and big-peak counts.
+- Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
+
+## What It Does Not Do
+- No precise PEQ filter generation.
+- No millisecond delay/phase alignment.
+- No full-range speaker correction.
+- No backend or account system.
+
+## Tech Stack
+- Next.js (App Router) + TypeScript
+- Recharts for response overlays
+- CSS modules + global CSS variables
+- Vitest for DSP unit tests
+
+## Project Structure
+- `app/` routes and page flow
+- `components/` shared UI
+- `lib/audio/` recorder + DSP analysis
+- `lib/storage/` local storage model and migration stub
+- `public/test-tracks/` generated WAV test track
+- `scripts/generate-test-track.mjs` reproducible track generation
+- `tests/` DSP and synthetic signal tests
+- `docs/` MVP spec and measurement guide
+
+## Setup
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Generate test track (already committed, rerun if needed):
+   ```bash
+   npm run generate:test-track
+   ```
+3. Start dev server:
+   ```bash
+   npm run dev
+   ```
+4. Open [http://localhost:3000](http://localhost:3000)
+
+## Build and Test
+- Run tests:
+  ```bash
+  npm test
+  ```
+- Production build check:
+  ```bash
+  npm run build
+  ```
+
+## Test Track Details
+File: `public/test-tracks/bassbuddy_mvp.wav`
+
+- Sample rate: 48 kHz
+- Duration: ~75 seconds
+- Sequence:
+  - 0.0-0.5s silence
+  - 0.5-1.0s 1 kHz sync beep
+  - 1.0-1.5s silence
+  - Two passes of tone steps: `25, 31.5, 40, 50, 63, 80, 100, 125 Hz`
+  - Each step: `0.25s silence + 4.0s tone + 0.25s silence`
+
+## Measurement Workflow (MVP)
+1. Open BassBuddy on phone/laptop at listening seat.
+2. Pick mode:
+   - Baseline
+   - A/B placement compare
+   - Phase compare
+3. In Setup:
+   - Complete checklist
+   - Run mic level check
+   - Open/download test track
+4. In Record:
+   - Tap **Start Listening**
+   - Play test track on main system
+   - Wait for completion (or manual sync if beep not detected)
+5. In Results:
+   - Read curve + smoothness summary
+   - Label run (`Placement A/B` or `Phase 0/180`)
+6. In Compare:
+   - Select two runs in same mode
+   - Review overlay + winner recommendation
+
+## Practical Use Notes
+- These are **relative** results, not calibrated SPL.
+- Keep volume and mic position fixed between runs.
+- Consumer mic processing may still be active despite constraint requests.
+- If clipping appears, lower playback volume slightly and re-run.
