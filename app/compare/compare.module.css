@@ -7,6 +7,11 @@
   gap: 10px;
 }
 
+.rowActions {
+  display: grid;
+  gap: 8px;
+}
+
 .recommendation {
   margin: 0;
   line-height: 1.4;

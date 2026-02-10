@@ -108,10 +108,59 @@ export function updateRun(id: string, updater: (run: BassRun) => BassRun): BassR
   return updated;
 }
 
-export function clearRuns(): void {
-  if (typeof window === "undefined") {
-    return;
+export function deleteRun(id: string): boolean {
+  const store = loadStore();
+  const nextRuns = store.runs.filter((run) => run.id !== id);
+
+  if (nextRuns.length === store.runs.length) {
+    return false;
   }
 
+  if (!nextRuns.length) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(RUNS_STORAGE_KEY);
+    }
+    return true;
+  }
+
+  saveStore({
+    version: RUNS_STORE_VERSION,
+    runs: nextRuns
+  });
+
+  return true;
+}
+
+export function clearRuns(mode?: RunMode): number {
+  if (mode) {
+    const store = loadStore();
+    const nextRuns = store.runs.filter((run) => run.mode !== mode);
+    const removedCount = store.runs.length - nextRuns.length;
+
+    if (removedCount === 0) {
+      return 0;
+    }
+
+    if (!nextRuns.length) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(RUNS_STORAGE_KEY);
+      }
+      return removedCount;
+    }
+
+    saveStore({
+      version: RUNS_STORE_VERSION,
+      runs: nextRuns
+    });
+
+    return removedCount;
+  }
+
+  if (typeof window === "undefined") {
+    return 0;
+  }
+
+  const removedCount = loadStore().runs.length;
   localStorage.removeItem(RUNS_STORAGE_KEY);
+  return removedCount;
 }

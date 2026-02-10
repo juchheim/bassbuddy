@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ResponseChart } from "@/components/ResponseChart";
 import { SummaryCard } from "@/components/SummaryCard";
-import { getRunById, listRuns, updateRun } from "@/lib/storage/runsStore";
+import { deleteRun, getRunById, listRuns, updateRun } from "@/lib/storage/runsStore";
 import type { BassRun } from "@/lib/types";
 import { modeTitle } from "@/lib/utils/mode";
 import styles from "@/app/results/[id]/results.module.css";
 
 export default function ResultsPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const runId = params?.id;
 
@@ -109,6 +110,23 @@ export default function ResultsPage() {
             Go to Compare
           </Link>
         ) : null}
+
+        <button
+          type="button"
+          className="cta ctaDanger"
+          onClick={() => {
+            if (!window.confirm("Delete this run?")) {
+              return;
+            }
+
+            const removed = deleteRun(run.id);
+            if (removed) {
+              router.push(`/compare?mode=${run.mode}`);
+            }
+          }}
+        >
+          Delete This Run
+        </button>
 
         <Link href="/" className="cta ctaSecondary" style={{ textAlign: "center" }}>
           Home

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ResetRunsButton } from "@/components/ResetRunsButton";
 import { ResponseChart } from "@/components/ResponseChart";
 import { RunPicker } from "@/components/RunPicker";
-import { listRuns } from "@/lib/storage/runsStore";
+import { deleteRun, listRuns } from "@/lib/storage/runsStore";
 import type { BassRun, RunMode } from "@/lib/types";
 import { compareRuns } from "@/lib/utils/compareRuns";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
@@ -57,6 +58,7 @@ export default function ComparePage() {
   const [runs, setRuns] = useState<BassRun[]>([]);
   const [selectedA, setSelectedA] = useState("");
   const [selectedB, setSelectedB] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -101,10 +103,83 @@ export default function ComparePage() {
           <>
             <RunPicker id="runA" label="Run A" runs={runs} selectedId={selectedA} onSelect={setSelectedA} />
             <RunPicker id="runB" label="Run B" runs={runs} selectedId={selectedB} onSelect={setSelectedB} />
+            <div className={styles.rowActions}>
+              <button
+                type="button"
+                className="cta ctaSecondary"
+                disabled={!selectedA}
+                onClick={() => {
+                  const run = runs.find((entry) => entry.id === selectedA);
+                  if (!run) {
+                    setNotice("Run A was not found.");
+                    return;
+                  }
+
+                  if (!window.confirm(`Delete "${run.label ?? "Run A"}"?`)) {
+                    return;
+                  }
+
+                  const removed = deleteRun(run.id);
+                  if (removed) {
+                    setNotice("Deleted selected Run A.");
+                    const nextRuns = listRuns(mode);
+                    setRuns(nextRuns);
+                    setSelectedA(nextRuns[0]?.id ?? "");
+                    setSelectedB(nextRuns[1]?.id ?? nextRuns[0]?.id ?? "");
+                  } else {
+                    setNotice("Could not delete selected Run A.");
+                  }
+                }}
+              >
+                Delete Selected Run A
+              </button>
+              <button
+                type="button"
+                className="cta ctaSecondary"
+                disabled={!selectedB}
+                onClick={() => {
+                  const run = runs.find((entry) => entry.id === selectedB);
+                  if (!run) {
+                    setNotice("Run B was not found.");
+                    return;
+                  }
+
+                  if (!window.confirm(`Delete "${run.label ?? "Run B"}"?`)) {
+                    return;
+                  }
+
+                  const removed = deleteRun(run.id);
+                  if (removed) {
+                    setNotice("Deleted selected Run B.");
+                    const nextRuns = listRuns(mode);
+                    setRuns(nextRuns);
+                    setSelectedA(nextRuns[0]?.id ?? "");
+                    setSelectedB(nextRuns[1]?.id ?? nextRuns[0]?.id ?? "");
+                  } else {
+                    setNotice("Could not delete selected Run B.");
+                  }
+                }}
+              >
+                Delete Selected Run B
+              </button>
+            </div>
           </>
         ) : (
           <p className="warning">Need at least two saved runs in this mode to compare.</p>
         )}
+        <ResetRunsButton
+          mode={mode}
+          className="cta ctaDanger"
+          label="Start Fresh (Delete Runs In This Mode)"
+          onCleared={() => {
+            const nextRuns = listRuns(mode);
+            setRuns(nextRuns);
+            setSelectedA(nextRuns[0]?.id ?? "");
+            setSelectedB(nextRuns[1]?.id ?? nextRuns[0]?.id ?? "");
+            setNotice("Deleted runs in this mode.");
+          }}
+        />
+        {notice ? <p className="muted" style={{ margin: 0 }}>{notice}</p> : null}
       </section>
 
       {runA && runB && runA.id !== runB.id ? (

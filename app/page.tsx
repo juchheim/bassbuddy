@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ModeCard } from "@/components/ModeCard";
+import { ResetRunsButton } from "@/components/ResetRunsButton";
 import styles from "@/app/page.module.css";
 
 export default function HomePage() {
@@ -56,6 +57,12 @@ export default function HomePage() {
         <Link href="/test-track" className="cta ctaSecondary" style={{ display: "inline-block", textAlign: "center" }}>
           Open Test Track Page
         </Link>
+      </section>
+
+      <section className="panel" style={{ marginTop: 12 }}>
+        <h2 className={styles.sectionTitle}>Start Fresh</h2>
+        <p className="muted">Delete saved runs if you want to restart measurements from scratch.</p>
+        <ResetRunsButton className="cta ctaDanger" />
       </section>
     </main>
   );
