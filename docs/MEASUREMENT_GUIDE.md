@@ -1,0 +1,40 @@
+# BassBuddy Measurement Guide (MVP)
+
+## Before You Start
+- Place your phone/laptop at the main listening position.
+- Keep the mic unobstructed and pointed consistently between runs.
+- Keep playback volume fixed for all comparisons.
+- Disable voice isolation/noise suppression modes if your device allows.
+
+## Recommended Setup
+1. Open BassBuddy on the device used as measurement microphone.
+2. Open the ~75s test track on your playback system (TV/streamer/other laptop).
+3. In BassBuddy, complete mic level check and confirm no clipping.
+4. Start listening in BassBuddy, then play the test track.
+
+## Measurement Modes
+- **Quick Baseline**: capture one reference run.
+- **Compare Placements (A/B)**: measure placement A and placement B.
+- **Phase Test (0 vs 180)**: measure phase switch positions.
+
+## During Recording
+- Keep room conditions steady.
+- Avoid moving the mic/device.
+- Avoid speaking or extra noise.
+- Wait for “Measurement captured” before touching controls.
+
+## Reading Results
+- **Response Curve**: frequency vs relative dB around run median.
+- **Smoothness Score**: lower is better.
+- **Worst Peak**: likely “boom” area.
+- **Worst Dip**: likely cancellation area (often position-related).
+
+## Practical Interpretation
+- If one run has lower score and fewer deep dips, use that configuration.
+- Big peaks can improve by reducing boundary loading (move sub away from corners/walls).
+- Deep dips often need location changes (move sub ~1-2 ft and re-test).
+
+## Important Limitations
+- Results are relative, not calibrated SPL.
+- Consumer mic processing can bias measurements.
+- Use this tool for quick placement/phase decisions, not precision EQ design.

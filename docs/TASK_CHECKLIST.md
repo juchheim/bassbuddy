@@ -1,0 +1,15 @@
+# BassBuddy MVP Task Checklist
+
+- [x] Draft product/spec and user measurement guide docs
+- [x] Scaffold Next.js App Router + TypeScript project structure
+- [x] Implement shared constants/types/storage model with migration stub
+- [x] Implement test track generator and generated WAV file
+- [x] Implement mic permission + live meter + constraint reporting
+- [x] Implement recording pipeline (AudioWorklet + ScriptProcessor fallback)
+- [x] Implement DSP modules (Goertzel, beep detect, segmentation, analysis, scoring)
+- [x] Build pages: home, setup, record, results, compare, test-track
+- [x] Wire baseline flow end-to-end
+- [x] Wire A/B and phase workflows
+- [x] Add unit tests for DSP core and synthetic signal generation
+- [x] Add README with setup/run/test and measurement workflow
+- [x] Run tests and fix issues
