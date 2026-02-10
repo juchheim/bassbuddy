@@ -1,0 +1,23 @@
+.header {
+  margin-bottom: 14px;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.disclaimer {
+  margin-top: 14px;
+  line-height: 1.4;
+}
+
+.list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+}

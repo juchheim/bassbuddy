@@ -1,0 +1,29 @@
+.card {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(160deg, #ffffff 0%, #f3f7f9 100%);
+  padding: 16px;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(12, 45, 64, 0.12);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.description {
+  margin: 8px 0 14px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.action {
+  font-weight: 700;
+  color: var(--accent);
+}
