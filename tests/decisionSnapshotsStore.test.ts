@@ -87,25 +87,29 @@ describe("decisionSnapshots storage", () => {
   });
 
   it("saves and lists snapshots", () => {
-    saveDecisionSnapshot(baseReport, 5, "first");
-    const second = saveDecisionSnapshot({ ...baseReport, overallScore: 65 }, 6, "second");
+    saveDecisionSnapshot(baseReport, 5, "first", "session-a");
+    const second = saveDecisionSnapshot({ ...baseReport, overallScore: 65 }, 6, "second", "session-a");
 
-    const snapshots = listDecisionSnapshots();
+    const snapshots = listDecisionSnapshots("session-a");
     expect(snapshots).toHaveLength(2);
     expect(snapshots[0]?.id).toBe(second.id);
     expect(snapshots[0]?.label).toBe("second");
+    expect(snapshots[0]?.sessionId).toBe("session-a");
   });
 
-  it("deletes and clears snapshots", () => {
-    const one = saveDecisionSnapshot(baseReport, 2, "one");
-    saveDecisionSnapshot(baseReport, 3, "two");
+  it("deletes and clears snapshots by session", () => {
+    const one = saveDecisionSnapshot(baseReport, 2, "one", "session-a");
+    saveDecisionSnapshot(baseReport, 3, "two", "session-a");
+    saveDecisionSnapshot(baseReport, 3, "other", "session-b");
 
     const deleted = deleteDecisionSnapshot(one.id);
     expect(deleted).toBe(true);
-    expect(listDecisionSnapshots()).toHaveLength(1);
+    expect(listDecisionSnapshots("session-a")).toHaveLength(1);
+    expect(listDecisionSnapshots("session-b")).toHaveLength(1);
 
-    const removed = clearDecisionSnapshots();
+    const removed = clearDecisionSnapshots("session-a");
     expect(removed).toBe(1);
-    expect(listDecisionSnapshots()).toHaveLength(0);
+    expect(listDecisionSnapshots("session-a")).toHaveLength(0);
+    expect(listDecisionSnapshots("session-b")).toHaveLength(1);
   });
 });

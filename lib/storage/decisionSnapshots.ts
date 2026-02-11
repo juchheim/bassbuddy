@@ -1,4 +1,5 @@
 import type { DecisionReport } from "@/lib/utils/decisionAssistant";
+import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
 
 export const DECISION_SNAPSHOTS_STORAGE_KEY = "bassbuddy.v1.decisionSnapshots";
 export const DECISION_SNAPSHOTS_VERSION = 1;
@@ -8,6 +9,7 @@ export interface DecisionSnapshotV1 {
   id: string;
   createdAt: string;
   label?: string;
+  sessionId: string;
   runCount: number;
   report: DecisionReport;
 }
@@ -58,6 +60,10 @@ function parseSnapshots(raw: unknown): DecisionSnapshotV1[] {
     )
     .map((entry) => ({
       ...entry,
+      sessionId:
+        typeof entry.sessionId === "string" && entry.sessionId.trim()
+          ? entry.sessionId
+          : DEFAULT_EXPERIMENT_SESSION_ID,
       runCount: typeof entry.runCount === "number" ? entry.runCount : 0,
       label: typeof entry.label === "string" ? entry.label : undefined
     }));
@@ -123,19 +129,28 @@ function writeSnapshots(snapshots: DecisionSnapshotV1[]): void {
   });
 }
 
-export function listDecisionSnapshots(): DecisionSnapshotV1[] {
-  return sortSnapshots(loadStore().snapshots);
+export function listDecisionSnapshots(sessionId?: string): DecisionSnapshotV1[] {
+  const snapshots = loadStore().snapshots;
+
+  if (!sessionId) {
+    return sortSnapshots(snapshots);
+  }
+
+  return sortSnapshots(snapshots.filter((snapshot) => snapshot.sessionId === sessionId));
 }
 
 export function saveDecisionSnapshot(
   report: DecisionReport,
   runCount: number,
-  label?: string
+  label?: string,
+  sessionId?: string
 ): DecisionSnapshotV1 {
   const snapshot: DecisionSnapshotV1 = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     label: label?.trim() || undefined,
+    sessionId:
+      typeof sessionId === "string" && sessionId.trim() ? sessionId : DEFAULT_EXPERIMENT_SESSION_ID,
     runCount,
     report
   };
@@ -157,13 +172,26 @@ export function deleteDecisionSnapshot(id: string): boolean {
   return true;
 }
 
-export function clearDecisionSnapshots(): number {
-  if (typeof window === "undefined") {
+export function clearDecisionSnapshots(sessionId?: string): number {
+  const store = loadStore();
+
+  if (!sessionId) {
+    if (typeof window === "undefined") {
+      return 0;
+    }
+
+    const removedAll = store.snapshots.length;
+    localStorage.removeItem(DECISION_SNAPSHOTS_STORAGE_KEY);
+    return removedAll;
+  }
+
+  const next = store.snapshots.filter((snapshot) => snapshot.sessionId !== sessionId);
+  const removed = store.snapshots.length - next.length;
+
+  if (removed === 0) {
     return 0;
   }
 
-  const removed = loadStore().snapshots.length;
-  localStorage.removeItem(DECISION_SNAPSHOTS_STORAGE_KEY);
+  writeSnapshots(next);
   return removed;
 }
-

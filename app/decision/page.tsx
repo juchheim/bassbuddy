@@ -8,6 +8,13 @@ import {
   listDecisionSnapshots,
   saveDecisionSnapshot
 } from "@/lib/storage/decisionSnapshots";
+import {
+  createExperimentSession,
+  getActiveExperimentSessionId,
+  listExperimentSessions,
+  renameExperimentSession,
+  setActiveExperimentSession
+} from "@/lib/storage/experimentSessions";
 import { exportRunsPayload, listRuns } from "@/lib/storage/runsStore";
 import {
   buildDecisionReport,
@@ -95,10 +102,43 @@ export default function DecisionPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [snapshotLabel, setSnapshotLabel] = useState("");
   const [selectedSnapshotId, setSelectedSnapshotId] = useState("");
+  const [newSessionName, setNewSessionName] = useState("");
+  const [renameSessionName, setRenameSessionName] = useState("");
+  const [activeSessionId, setActiveSessionId] = useState("");
 
-  const runs = useMemo(() => listRuns(), [refreshTick]);
+  const sessions = useMemo(() => listExperimentSessions(), [refreshTick]);
+
+  useEffect(() => {
+    const currentActive = getActiveExperimentSessionId();
+    setActiveSessionId(currentActive);
+  }, [refreshTick]);
+
+  useEffect(() => {
+    if (!sessions.length) {
+      return;
+    }
+
+    if (!activeSessionId || !sessions.some((session) => session.id === activeSessionId)) {
+      const fallback = sessions[0]?.id;
+
+      if (fallback) {
+        setActiveExperimentSession(fallback);
+        setActiveSessionId(fallback);
+      }
+    }
+  }, [activeSessionId, sessions]);
+
+  const activeSession = useMemo(
+    () => sessions.find((session) => session.id === activeSessionId) ?? null,
+    [activeSessionId, sessions]
+  );
+
+  const runs = useMemo(() => listRuns(undefined, activeSessionId || undefined), [activeSessionId, refreshTick]);
   const report = useMemo(() => buildDecisionReport(runs), [runs]);
-  const snapshots = useMemo(() => listDecisionSnapshots(), [refreshTick]);
+  const snapshots = useMemo(
+    () => listDecisionSnapshots(activeSessionId || undefined),
+    [activeSessionId, refreshTick]
+  );
 
   useEffect(() => {
     if (!snapshots.length) {
@@ -110,6 +150,10 @@ export default function DecisionPage() {
       setSelectedSnapshotId(snapshots[0].id);
     }
   }, [selectedSnapshotId, snapshots]);
+
+  useEffect(() => {
+    setRenameSessionName(activeSession?.name ?? "");
+  }, [activeSession?.id, activeSession?.name]);
 
   const selectedSnapshot = useMemo(
     () => snapshots.find((entry) => entry.id === selectedSnapshotId) ?? null,
@@ -140,12 +184,89 @@ export default function DecisionPage() {
             {report.overallConfidence.toUpperCase()} ({report.overallScore}/100)
           </span>
         </div>
+
+        <label>
+          Active experiment session
+          <select
+            value={activeSessionId}
+            onChange={(event) => {
+              const next = event.target.value;
+              const switched = setActiveExperimentSession(next);
+
+              if (switched) {
+                setActiveSessionId(next);
+                setSelectedSnapshotId("");
+                setRefreshTick((value) => value + 1);
+                setMessage("Switched active experiment session.");
+              }
+            }}
+          >
+            {sessions.map((session) => (
+              <option value={session.id} key={session.id}>
+                {session.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className={styles.snapshotControls}>
+          <label>
+            New session name
+            <input
+              type="text"
+              value={newSessionName}
+              placeholder="e.g. Corner test Jan 2026"
+              onChange={(event) => setNewSessionName(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="cta ctaSecondary"
+            onClick={() => {
+              const created = createExperimentSession(newSessionName);
+              setNewSessionName("");
+              setActiveSessionId(created.id);
+              setRefreshTick((value) => value + 1);
+              setMessage(`Created and switched to session \"${created.name}\".`);
+            }}
+          >
+            Create New Session
+          </button>
+          <label>
+            Rename active session
+            <input
+              type="text"
+              value={renameSessionName}
+              onChange={(event) => setRenameSessionName(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="cta ctaSecondary"
+            disabled={!activeSession}
+            onClick={() => {
+              if (!activeSession) {
+                return;
+              }
+
+              const renamed = renameExperimentSession(activeSession.id, renameSessionName);
+
+              if (!renamed) {
+                setMessage("Provide a valid non-empty session name.");
+                return;
+              }
+
+              setRefreshTick((value) => value + 1);
+              setMessage(`Renamed active session to \"${renamed.name}\".`);
+            }}
+          >
+            Rename Session
+          </button>
+        </div>
+
         <p className={styles.meta}>{report.summary}</p>
         <p className={styles.meta}>
-          Generated from {runs.length} saved run{runs.length === 1 ? "" : "s"}.
-        </p>
-        <p className={styles.meta}>
-          Decision snapshots saved: {snapshots.length}
+          Session run count: {runs.length}. Snapshot count in session: {snapshots.length}.
         </p>
         {report.scout.candidateCount > 0 ? (
           <p className={styles.meta}>
@@ -166,7 +287,7 @@ export default function DecisionPage() {
             setMessage("Refreshed report from local saved runs.");
           }}
         >
-          Refresh From Saved Runs
+          Refresh Session Report
         </button>
         <button
           type="button"
@@ -174,8 +295,10 @@ export default function DecisionPage() {
           onClick={() => {
             const payload = {
               type: "bassbuddy.decision-report.v1",
+              sessionId: activeSession?.id,
+              sessionName: activeSession?.name,
               report,
-              runsExport: exportRunsPayload()
+              runsExport: exportRunsPayload(undefined, activeSessionId || undefined)
             };
 
             downloadJson(`${filenameBase()}.json`, payload);
@@ -217,7 +340,7 @@ export default function DecisionPage() {
             type="button"
             className="cta ctaSecondary"
             onClick={() => {
-              const snapshot = saveDecisionSnapshot(report, runs.length, snapshotLabel);
+              const snapshot = saveDecisionSnapshot(report, runs.length, snapshotLabel, activeSessionId || undefined);
               setSnapshotLabel("");
               setSelectedSnapshotId(snapshot.id);
               setRefreshTick((value) => value + 1);
@@ -250,7 +373,7 @@ export default function DecisionPage() {
                   Overall: {selectedSnapshot.report.overallConfidence.toUpperCase()} ({selectedSnapshot.report.overallScore}/100)
                 </p>
                 <p className={styles.meta}>
-                  Placement winner: {selectedSnapshot.report.placement.winner ?? "No winner"} | Phase winner: {" "}
+                  Placement winner: {selectedSnapshot.report.placement.winner ?? "No winner"} | Phase winner:{" "}
                   {selectedSnapshot.report.phase.winner ?? "No winner"}
                 </p>
                 {snapshotDelta ? (
@@ -279,6 +402,8 @@ export default function DecisionPage() {
                     onClick={() => {
                       downloadJson(`${filenameBase()}-snapshot.json`, {
                         type: "bassbuddy.decision-snapshot.v1",
+                        sessionId: activeSession?.id,
+                        sessionName: activeSession?.name,
                         snapshot: selectedSnapshot,
                         currentReport: report
                       });
@@ -313,16 +438,16 @@ export default function DecisionPage() {
               type="button"
               className="cta ctaDanger"
               onClick={() => {
-                if (!window.confirm("Clear all decision snapshots?")) {
+                if (!window.confirm("Clear all decision snapshots in this session?")) {
                   return;
                 }
 
-                const removed = clearDecisionSnapshots();
+                const removed = clearDecisionSnapshots(activeSessionId || undefined);
                 setRefreshTick((value) => value + 1);
-                setMessage(`Cleared ${removed} decision snapshot${removed === 1 ? "" : "s"}.`);
+                setMessage(`Cleared ${removed} decision snapshot${removed === 1 ? "" : "s"} in this session.`);
               }}
             >
-              Clear All Snapshots
+              Clear Session Snapshots
             </button>
           </>
         ) : (

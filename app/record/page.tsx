@@ -17,6 +17,7 @@ import {
   isGuidedSessionComplete,
   type GuidedSessionV1
 } from "@/lib/storage/guidedSession";
+import { getActiveExperimentSession } from "@/lib/storage/experimentSessions";
 import {
   buildToneSchedule,
   MANUAL_START_TIMEOUT_SEC,
@@ -79,6 +80,7 @@ interface PreflightResult {
 export default function RecordPage() {
   const router = useRouter();
   const [mode, setMode] = useState<RunMode>("baseline");
+  const [activeSessionName, setActiveSessionName] = useState<string>("");
   const [setupGate, setSetupGate] = useState<"checking" | "ready">("checking");
 
   const [phase, setPhase] = useState<"idle" | "recording" | "processing">("idle");
@@ -120,6 +122,7 @@ export default function RecordPage() {
     const params = new URLSearchParams(window.location.search);
     const nextMode = normalizeMode(params.get("mode"));
     setMode(nextMode);
+    setActiveSessionName(getActiveExperimentSession()?.name ?? "");
 
     if (!hasCompletedSetup()) {
       router.replace(`/setup?mode=${nextMode}`);
@@ -278,6 +281,7 @@ export default function RecordPage() {
         sampleRate: session.sampleRate,
         manualBeepTimeSec: hint
       });
+      const activeExperimentSession = getActiveExperimentSession();
       const activeGuidedSession = getGuidedSessionForMode(mode);
       const guidedStep = activeGuidedSession ? getCurrentGuidedStep(activeGuidedSession) : null;
       const previousGuidedRuns = (activeGuidedSession?.runIds ?? [])
@@ -345,7 +349,7 @@ export default function RecordPage() {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         mode,
-        sessionId: activeGuidedSession?.id,
+        sessionId: activeExperimentSession?.id,
         deviceInfo: {
           userAgent: navigator.userAgent,
           platform: getPlatform()
@@ -508,6 +512,7 @@ export default function RecordPage() {
       <header className={styles.header}>
         <h1>Record</h1>
         <p className="muted">Mode: {modeTitle(mode)}</p>
+        {activeSessionName ? <p className="muted">Session: {activeSessionName}</p> : null}
       </header>
 
       {guidedSession ? (

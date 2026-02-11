@@ -20,6 +20,7 @@ This MVP reports relative bass response only and focuses on simple, human-readab
 - Final Decision Assistant workflow (cross-mode recommendation + confidence + report export).
 - Local persistence with schema versioning/migration stub.
 - Local session tools (fresh session reset + JSON export/import).
+- Named experiment session model for longitudinal run/snapshot tracking.
 - Test-track page and downloadable test track.
 - Unit tests for DSP core modules.
 

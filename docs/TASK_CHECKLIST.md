@@ -19,3 +19,4 @@
 - [x] Add session tools (fresh reset + JSON export/import)
 - [x] Add Final Decision Assistant (cross-mode recommendation + confidence + report export/print)
 - [x] Add decision snapshot history (save/compare/delete snapshots over time)
+- [x] Add named experiment sessions and attach runs/snapshots to active session

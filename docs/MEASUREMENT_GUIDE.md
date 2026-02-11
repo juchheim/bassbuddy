@@ -45,6 +45,7 @@
 
 ## Finalizing
 - Open **Final Decision Assistant** to combine scout, A/B, multi-seat, and phase evidence.
+- Create a named experiment session for each physical experiment cycle (e.g., corner test vs front-wall test).
 - Save a **Decision Snapshot** before and after each physical change to track recommendation drift.
 - Follow the action plan if confidence is medium/low.
 - Export JSON and print the summary for your setup notes.

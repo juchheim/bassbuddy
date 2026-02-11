@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { clearDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
+import { resetExperimentSessions } from "@/lib/storage/experimentSessions";
 import { clearGuidedSession } from "@/lib/storage/guidedSession";
 import { clearRuns, exportRunsPayload, importRunsJson, listRuns } from "@/lib/storage/runsStore";
 
@@ -37,9 +38,10 @@ export function SessionTools() {
 
           const removed = clearRuns();
           const removedSnapshots = clearDecisionSnapshots();
+          resetExperimentSessions();
           clearGuidedSession();
           setMessage(
-            `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"} and ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}.`
+            `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"}, ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}, and reset experiment sessions.`
           );
         }}
       >

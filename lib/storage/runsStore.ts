@@ -1,4 +1,5 @@
 import type { BassRun, RunMode, RunsStoreV1 } from "@/lib/types";
+import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
 
 export const RUNS_STORAGE_KEY = "bassbuddy.v1.runs";
 export const RUNS_STORE_VERSION = 1;
@@ -37,13 +38,14 @@ function sortByCreatedAtDesc(runs: BassRun[]): BassRun[] {
 }
 
 function normalizeRun(run: BassRun): BassRun {
-  if (isRunMode(run.mode)) {
-    return run;
-  }
+  const mode = isRunMode(run.mode) ? run.mode : "baseline";
+  const sessionId =
+    typeof run.sessionId === "string" && run.sessionId.trim() ? run.sessionId : DEFAULT_EXPERIMENT_SESSION_ID;
 
   return {
     ...run,
-    mode: "baseline"
+    mode,
+    sessionId
   };
 }
 
@@ -139,9 +141,19 @@ function writeRuns(runs: BassRun[]): void {
   });
 }
 
-export function listRuns(mode?: RunMode): BassRun[] {
+export function listRuns(mode?: RunMode, sessionId?: string): BassRun[] {
   const runs = loadStore().runs;
-  const filtered = mode ? runs.filter((run) => run.mode === mode) : runs;
+  const filtered = runs.filter((run) => {
+    if (mode && run.mode !== mode) {
+      return false;
+    }
+
+    if (sessionId && run.sessionId !== sessionId) {
+      return false;
+    }
+
+    return true;
+  });
 
   return sortByCreatedAtDesc(filtered);
 }
@@ -189,10 +201,15 @@ export function deleteRun(id: string): boolean {
   return true;
 }
 
-export function clearRuns(mode?: RunMode): number {
-  if (mode) {
+export function clearRuns(mode?: RunMode, sessionId?: string): number {
+  if (mode || sessionId) {
     const store = loadStore();
-    const nextRuns = store.runs.filter((run) => run.mode !== mode);
+    const nextRuns = store.runs.filter((run) => {
+      const modeMatch = mode ? run.mode === mode : true;
+      const sessionMatch = sessionId ? run.sessionId === sessionId : true;
+
+      return !(modeMatch && sessionMatch);
+    });
     const removedCount = store.runs.length - nextRuns.length;
 
     if (removedCount === 0) {
@@ -212,11 +229,11 @@ export function clearRuns(mode?: RunMode): number {
   return removedCount;
 }
 
-export function exportRunsPayload(mode?: RunMode): RunsExportPayload {
+export function exportRunsPayload(mode?: RunMode, sessionId?: string): RunsExportPayload {
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
-    runs: listRuns(mode)
+    runs: listRuns(mode, sessionId)
   };
 }
 
