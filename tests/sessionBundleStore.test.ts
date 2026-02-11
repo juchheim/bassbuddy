@@ -11,7 +11,7 @@ import {
   SESSION_BUNDLE_VERSION
 } from "@/lib/storage/sessionBundle";
 import { getUiPrefs, markSetupCompleted, resetSetupCompleted } from "@/lib/storage/uiPrefs";
-import { getWinnerLock, saveWinnerLock } from "@/lib/storage/winnerLock";
+import { getWinnerLock, listWinnerLockHistory, saveWinnerLock } from "@/lib/storage/winnerLock";
 import type { DecisionReport } from "@/lib/utils/decisionAssistant";
 import type { BassRun } from "@/lib/types";
 
@@ -143,6 +143,7 @@ describe("session bundle storage", () => {
     saveRun(makeRun("run-1", "ab", session.id, "Placement A"));
     saveDecisionSnapshot(baseReport, 1, "checkpoint", session.id);
     saveWinnerLock({ sessionId: session.id, placementWinner: "Placement A", source: "decision" });
+    saveWinnerLock({ sessionId: session.id, phaseWinner: "Phase 180", source: "decision" });
     startGuidedSession("ab", 2);
     markSetupCompleted("2026-02-01T10:05:00.000Z");
 
@@ -154,6 +155,7 @@ describe("session bundle storage", () => {
     expect(bundle.experimentSessions.sessions.some((entry) => entry.id === session.id)).toBe(true);
     expect(bundle.decisionSnapshots.snapshots).toHaveLength(1);
     expect(bundle.winnerLocks.locks).toHaveLength(1);
+    expect(bundle.winnerLocks.history).toHaveLength(2);
     expect(bundle.guidedSession?.mode).toBe("ab");
     expect(bundle.uiPrefs.setupCompleted).toBe(true);
   });
@@ -215,6 +217,17 @@ describe("session bundle storage", () => {
             createdAt: "2026-02-01T12:00:00.000Z",
             updatedAt: "2026-02-01T12:00:00.000Z"
           }
+        ],
+        history: [
+          {
+            id: "lock-history-1",
+            sessionId: "session-import",
+            placementWinner: "Placement B",
+            phaseWinner: "Phase 180",
+            notes: "Imported lock",
+            source: "decision" as const,
+            createdAt: "2026-02-01T12:00:00.000Z"
+          }
         ]
       },
       guidedSession: {
@@ -246,6 +259,7 @@ describe("session bundle storage", () => {
     expect(listExperimentSessions().some((entry) => entry.id === "session-import")).toBe(true);
     expect(listDecisionSnapshots("session-import")).toHaveLength(1);
     expect(getWinnerLock("session-import")?.placementWinner).toBe("Placement B");
+    expect(listWinnerLockHistory("session-import")).toHaveLength(1);
     expect(getGuidedSession()?.id).toBe("guided-import");
     expect(getUiPrefs().setupCompleted).toBe(true);
   });
@@ -292,7 +306,8 @@ describe("session bundle storage", () => {
       },
       winnerLocks: {
         version: 1 as const,
-        locks: []
+        locks: [],
+        history: []
       },
       guidedSession: null,
       uiPrefs: {

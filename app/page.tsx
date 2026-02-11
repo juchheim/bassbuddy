@@ -17,7 +17,7 @@ import {
 } from "@/lib/storage/experimentSessions";
 import { listRuns } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
-import { getWinnerLock } from "@/lib/storage/winnerLock";
+import { getWinnerLock, listWinnerLockHistory } from "@/lib/storage/winnerLock";
 import type { RunMode } from "@/lib/types";
 import { buildDecisionReport, compareDecisionReports } from "@/lib/utils/decisionAssistant";
 import styles from "@/app/page.module.css";
@@ -125,6 +125,10 @@ export default function HomePage() {
   const sessionReport = useMemo(() => buildDecisionReport(sessionRuns), [sessionRuns]);
   const sessionWinnerLock = useMemo(
     () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
+    [activeSessionId, refreshTick]
+  );
+  const recentLockHistory = useMemo(
+    () => (activeSessionId ? listWinnerLockHistory(activeSessionId).slice(0, 3) : []),
     [activeSessionId, refreshTick]
   );
   const sessionSnapshots = useMemo(
@@ -330,6 +334,26 @@ export default function HomePage() {
           <p className="muted">No baseline lock yet. Lock winners from Compare or Decision.</p>
         )}
         {sessionWinnerLock?.notes ? <p className="muted">Lock notes: {sessionWinnerLock.notes}</p> : null}
+        {recentLockHistory.length ? (
+          <div className={styles.lockTimelinePanel}>
+            <p className="muted" style={{ margin: 0 }}>
+              Recent lock timeline:
+            </p>
+            <ul className={styles.lockTimelineList}>
+              {recentLockHistory.map((entry) => (
+                <li key={entry.id} className={styles.lockTimelineItem}>
+                  <p className="muted" style={{ margin: 0 }}>
+                    <strong>{new Date(entry.createdAt).toLocaleString()}</strong> |{" "}
+                    {entry.source === "compare" ? "Compare" : "Decision"}
+                  </p>
+                  <p className="muted" style={{ margin: 0 }}>
+                    {entry.placementWinner ?? "No placement"} | {entry.phaseWinner ?? "No phase"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <p className="muted">
           Best A/B result: <strong>{sessionReport.placement.winner ?? "No winner yet"}</strong>
         </p>

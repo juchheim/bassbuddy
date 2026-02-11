@@ -16,7 +16,7 @@ import {
   setActiveExperimentSession
 } from "@/lib/storage/experimentSessions";
 import { exportRunsPayload, listRuns } from "@/lib/storage/runsStore";
-import { clearWinnerLocks, getWinnerLock, saveWinnerLock } from "@/lib/storage/winnerLock";
+import { clearWinnerLocks, getWinnerLock, listWinnerLockHistory, saveWinnerLock } from "@/lib/storage/winnerLock";
 import {
   buildDecisionReport,
   compareDecisionReports,
@@ -163,6 +163,10 @@ export default function DecisionPage() {
   );
   const activeWinnerLock = useMemo(
     () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
+    [activeSessionId, refreshTick]
+  );
+  const activeLockHistory = useMemo(
+    () => (activeSessionId ? listWinnerLockHistory(activeSessionId).slice(0, 12) : []),
     [activeSessionId, refreshTick]
   );
 
@@ -341,6 +345,28 @@ export default function DecisionPage() {
             >
               Clear Locked Baseline
             </button>
+          </div>
+          <div className={styles.lockHistoryPanel}>
+            <p className={styles.evidenceTitle}>Baseline Lock Timeline</p>
+            {activeLockHistory.length ? (
+              <ol className={styles.lockHistoryList}>
+                {activeLockHistory.map((entry) => (
+                  <li key={entry.id} className={styles.lockHistoryItem}>
+                    <p className={styles.meta}>
+                      <strong>{new Date(entry.createdAt).toLocaleString()}</strong> | Source:{" "}
+                      {entry.source === "compare" ? "Compare" : "Decision Assistant"}
+                    </p>
+                    <p className={styles.meta}>
+                      Placement: <strong>{entry.placementWinner ?? "No winner"}</strong> | Phase:{" "}
+                      <strong>{entry.phaseWinner ?? "No winner"}</strong>
+                    </p>
+                    {entry.notes ? <p className={styles.meta}>Notes: {entry.notes}</p> : null}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className={styles.meta}>No lock history in this session yet.</p>
+            )}
           </div>
         </div>
         {report.scout.candidateCount > 0 ? (

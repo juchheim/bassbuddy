@@ -5,6 +5,7 @@ import {
   exportWinnerLocksPayload,
   getWinnerLock,
   importWinnerLocksPayload,
+  listWinnerLockHistory,
   listWinnerLocks,
   saveWinnerLock
 } from "@/lib/storage/winnerLock";
@@ -73,6 +74,10 @@ describe("winner lock storage", () => {
     expect(second?.phaseWinner).toBe("Phase 180");
     expect(second?.notes).toBe("From compare");
     expect(getWinnerLock("session-a")?.phaseWinner).toBe("Phase 180");
+    const history = listWinnerLockHistory("session-a");
+    expect(history).toHaveLength(2);
+    expect(history[0]?.phaseWinner).toBe("Phase 180");
+    expect(history[1]?.placementWinner).toBe("Placement B");
   });
 
   it("clears session-specific and global locks", () => {
@@ -84,6 +89,7 @@ describe("winner lock storage", () => {
     const removedSession = clearWinnerLocks("session-a");
     expect(removedSession).toBe(1);
     expect(getWinnerLock("session-a")).toBeNull();
+    expect(listWinnerLockHistory("session-a")).toHaveLength(0);
     expect(getWinnerLock(DEFAULT_EXPERIMENT_SESSION_ID)).not.toBeNull();
 
     const removedAll = clearWinnerLocks();
@@ -93,7 +99,9 @@ describe("winner lock storage", () => {
 
   it("exports and imports locks with merge/replace", () => {
     saveWinnerLock({ sessionId: "session-a", placementWinner: "Placement A", source: "compare" });
+    saveWinnerLock({ sessionId: "session-a", phaseWinner: "Phase 180", source: "decision" });
     const exported = exportWinnerLocksPayload();
+    expect(exported.history).toHaveLength(2);
 
     saveWinnerLock({ sessionId: "session-b", phaseWinner: "Phase 0", source: "decision" });
 
@@ -106,5 +114,16 @@ describe("winner lock storage", () => {
     expect(replaced.total).toBe(1);
     expect(listWinnerLocks()).toHaveLength(1);
     expect(getWinnerLock("session-a")?.placementWinner).toBe("Placement A");
+    expect(listWinnerLockHistory("session-a")).toHaveLength(2);
+  });
+
+  it("can clear current locks while keeping history when requested", () => {
+    saveWinnerLock({ sessionId: "session-a", placementWinner: "Placement A", source: "compare" });
+    saveWinnerLock({ sessionId: "session-a", phaseWinner: "Phase 0", source: "decision" });
+
+    const removed = clearWinnerLocks("session-a", { includeHistory: false });
+    expect(removed).toBe(1);
+    expect(getWinnerLock("session-a")).toBeNull();
+    expect(listWinnerLockHistory("session-a")).toHaveLength(2);
   });
 });

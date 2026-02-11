@@ -96,6 +96,28 @@
   gap: 8px;
 }
 
+.lockHistoryPanel {
+  display: grid;
+  gap: 6px;
+}
+
+.lockHistoryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.lockHistoryItem {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
 .snapshotControls {
   display: grid;
   gap: 8px;

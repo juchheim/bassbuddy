@@ -55,6 +55,26 @@
   gap: 8px;
 }
 
+.lockTimelinePanel {
+  display: grid;
+  gap: 6px;
+}
+
+.lockTimelineList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.lockTimelineItem {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  padding: 8px;
+}
+
 .disclaimer {
   margin-top: 14px;
   line-height: 1.4;

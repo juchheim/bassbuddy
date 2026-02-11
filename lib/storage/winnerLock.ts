@@ -3,6 +3,7 @@ import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
 export const WINNER_LOCKS_STORAGE_KEY = "bassbuddy.v1.winnerLocks";
 export const WINNER_LOCKS_VERSION = 1;
 const MAX_WINNER_LOCKS = 50;
+const MAX_WINNER_LOCK_HISTORY = 500;
 
 export type WinnerLockSource = "compare" | "decision";
 
@@ -16,9 +17,20 @@ export interface WinnerLockV1 {
   updatedAt: string;
 }
 
+export interface WinnerLockHistoryEntryV1 {
+  id: string;
+  sessionId: string;
+  placementWinner?: string;
+  phaseWinner?: string;
+  notes?: string;
+  source: WinnerLockSource;
+  createdAt: string;
+}
+
 interface WinnerLocksStoreV1 {
   version: 1;
   locks: WinnerLockV1[];
+  history: WinnerLockHistoryEntryV1[];
 }
 
 export interface SaveWinnerLockInput {
@@ -32,6 +44,7 @@ export interface SaveWinnerLockInput {
 export interface WinnerLocksExportPayload {
   version: 1;
   locks: WinnerLockV1[];
+  history: WinnerLockHistoryEntryV1[];
 }
 
 export interface ImportWinnerLocksOptions {
@@ -44,15 +57,24 @@ export interface ImportWinnerLocksResult {
   total: number;
 }
 
+export interface ClearWinnerLocksOptions {
+  includeHistory?: boolean;
+}
+
 function emptyStore(): WinnerLocksStoreV1 {
   return {
     version: WINNER_LOCKS_VERSION,
-    locks: []
+    locks: [],
+    history: []
   };
 }
 
 function sortLocks(locks: WinnerLockV1[]): WinnerLockV1[] {
   return [...locks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
+function sortHistory(entries: WinnerLockHistoryEntryV1[]): WinnerLockHistoryEntryV1[] {
+  return [...entries].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 function compactLocks(locks: WinnerLockV1[]): WinnerLockV1[] {
@@ -65,6 +87,18 @@ function compactLocks(locks: WinnerLockV1[]): WinnerLockV1[] {
   }
 
   return Array.from(deduped.values()).slice(0, MAX_WINNER_LOCKS);
+}
+
+function compactHistory(entries: WinnerLockHistoryEntryV1[]): WinnerLockHistoryEntryV1[] {
+  const deduped = new Map<string, WinnerLockHistoryEntryV1>();
+
+  for (const entry of sortHistory(entries)) {
+    if (!deduped.has(entry.id)) {
+      deduped.set(entry.id, entry);
+    }
+  }
+
+  return Array.from(deduped.values()).slice(0, MAX_WINNER_LOCK_HISTORY);
 }
 
 function normalizeSessionId(sessionId: unknown): string {
@@ -107,6 +141,32 @@ function parseLock(raw: unknown): WinnerLockV1 | null {
   };
 }
 
+function parseHistoryEntry(raw: unknown): WinnerLockHistoryEntryV1 | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const candidate = raw as Partial<WinnerLockHistoryEntryV1>;
+  const now = new Date().toISOString();
+  const sessionId = normalizeSessionId(candidate.sessionId);
+  const createdAt = typeof candidate.createdAt === "string" ? candidate.createdAt : now;
+  const source = parseSource(candidate.source);
+  const fallbackId = `${sessionId}-${createdAt}-${source}`;
+
+  return {
+    id:
+      typeof candidate.id === "string" && candidate.id.trim()
+        ? candidate.id
+        : fallbackId,
+    sessionId,
+    placementWinner: normalizeOptionalText(candidate.placementWinner),
+    phaseWinner: normalizeOptionalText(candidate.phaseWinner),
+    notes: normalizeOptionalText(candidate.notes),
+    source,
+    createdAt
+  };
+}
+
 function parseLocks(raw: unknown): WinnerLockV1[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -115,17 +175,38 @@ function parseLocks(raw: unknown): WinnerLockV1[] {
   return raw.map(parseLock).filter((entry): entry is WinnerLockV1 => Boolean(entry));
 }
 
+function parseHistory(raw: unknown): WinnerLockHistoryEntryV1[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw.map(parseHistoryEntry).filter((entry): entry is WinnerLockHistoryEntryV1 => Boolean(entry));
+}
+
+function makeHistoryEntry(lock: WinnerLockV1): WinnerLockHistoryEntryV1 {
+  return {
+    id: crypto.randomUUID(),
+    sessionId: lock.sessionId,
+    placementWinner: lock.placementWinner,
+    phaseWinner: lock.phaseWinner,
+    notes: lock.notes,
+    source: lock.source,
+    createdAt: lock.updatedAt
+  };
+}
+
 function migrateStore(raw: unknown): WinnerLocksStoreV1 {
   if (!raw || typeof raw !== "object") {
     return emptyStore();
   }
 
-  const parsed = raw as Partial<WinnerLocksStoreV1>;
+  const parsed = raw as Partial<WinnerLocksStoreV1> & { history?: unknown };
 
   if (parsed.version === 1 && Array.isArray(parsed.locks)) {
     return {
       version: 1,
-      locks: compactLocks(parseLocks(parsed.locks))
+      locks: compactLocks(parseLocks(parsed.locks)),
+      history: compactHistory(parseHistory(parsed.history))
     };
   }
 
@@ -159,10 +240,11 @@ function saveStore(store: WinnerLocksStoreV1): void {
   localStorage.setItem(WINNER_LOCKS_STORAGE_KEY, JSON.stringify(store));
 }
 
-function writeLocks(locks: WinnerLockV1[]): void {
-  const next = compactLocks(locks);
+function writeStore(locks: WinnerLockV1[], history: WinnerLockHistoryEntryV1[]): void {
+  const nextLocks = compactLocks(locks);
+  const nextHistory = compactHistory(history);
 
-  if (!next.length) {
+  if (!nextLocks.length && !nextHistory.length) {
     if (typeof window !== "undefined") {
       localStorage.removeItem(WINNER_LOCKS_STORAGE_KEY);
     }
@@ -171,12 +253,24 @@ function writeLocks(locks: WinnerLockV1[]): void {
 
   saveStore({
     version: WINNER_LOCKS_VERSION,
-    locks: next
+    locks: nextLocks,
+    history: nextHistory
   });
 }
 
 export function listWinnerLocks(): WinnerLockV1[] {
   return sortLocks(loadStore().locks);
+}
+
+export function listWinnerLockHistory(sessionId?: string): WinnerLockHistoryEntryV1[] {
+  const history = sortHistory(loadStore().history);
+
+  if (!sessionId) {
+    return history;
+  }
+
+  const resolvedSessionId = normalizeSessionId(sessionId);
+  return history.filter((entry) => entry.sessionId === resolvedSessionId);
 }
 
 export function getWinnerLock(sessionId?: string): WinnerLockV1 | null {
@@ -213,12 +307,14 @@ export function saveWinnerLock(input: SaveWinnerLockInput): WinnerLockV1 | null 
   };
 
   const remainder = store.locks.filter((entry) => entry.sessionId !== sessionId);
-  writeLocks([next, ...remainder]);
+  const nextHistoryEntry = makeHistoryEntry(next);
+  writeStore([next, ...remainder], [nextHistoryEntry, ...store.history]);
   return next;
 }
 
-export function clearWinnerLocks(sessionId?: string): number {
+export function clearWinnerLocks(sessionId?: string, options?: ClearWinnerLocksOptions): number {
   const store = loadStore();
+  const includeHistory = options?.includeHistory ?? true;
 
   if (!sessionId) {
     if (typeof window === "undefined") {
@@ -226,40 +322,63 @@ export function clearWinnerLocks(sessionId?: string): number {
     }
 
     const removed = store.locks.length;
-    localStorage.removeItem(WINNER_LOCKS_STORAGE_KEY);
+
+    if (includeHistory) {
+      localStorage.removeItem(WINNER_LOCKS_STORAGE_KEY);
+      return removed;
+    }
+
+    writeStore([], store.history);
     return removed;
   }
 
   const resolvedSessionId = normalizeSessionId(sessionId);
-  const next = store.locks.filter((entry) => entry.sessionId !== resolvedSessionId);
-  const removed = store.locks.length - next.length;
+  const nextLocks = store.locks.filter((entry) => entry.sessionId !== resolvedSessionId);
+  const removed = store.locks.length - nextLocks.length;
 
-  if (!removed) {
+  if (!removed && (!includeHistory || !store.history.some((entry) => entry.sessionId === resolvedSessionId))) {
     return 0;
   }
 
-  writeLocks(next);
+  const nextHistory = includeHistory
+    ? store.history.filter((entry) => entry.sessionId !== resolvedSessionId)
+    : store.history;
+
+  writeStore(nextLocks, nextHistory);
   return removed;
 }
 
 export function exportWinnerLocksPayload(): WinnerLocksExportPayload {
   return {
     version: 1,
-    locks: listWinnerLocks()
+    locks: listWinnerLocks(),
+    history: listWinnerLockHistory()
   };
 }
 
-function parseImportPayload(payload: unknown): WinnerLockV1[] {
+function parseImportPayload(
+  payload: unknown
+): { locks: WinnerLockV1[]; history: WinnerLockHistoryEntryV1[] } {
   if (Array.isArray(payload)) {
-    return compactLocks(parseLocks(payload));
+    return {
+      locks: compactLocks(parseLocks(payload)),
+      history: []
+    };
   }
 
   if (!payload || typeof payload !== "object") {
-    return [];
+    return {
+      locks: [],
+      history: []
+    };
   }
 
-  const parsed = payload as Partial<WinnerLocksStoreV1> & { locks?: unknown };
-  return compactLocks(parseLocks(parsed.locks));
+  const parsed = payload as Partial<WinnerLocksStoreV1> & { locks?: unknown; history?: unknown };
+
+  return {
+    locks: compactLocks(parseLocks(parsed.locks)),
+    history: compactHistory(parseHistory(parsed.history))
+  };
 }
 
 export function importWinnerLocksPayload(
@@ -267,36 +386,37 @@ export function importWinnerLocksPayload(
   options?: ImportWinnerLocksOptions
 ): ImportWinnerLocksResult {
   const incoming = parseImportPayload(payload);
-  const existing = loadStore().locks;
+  const existing = loadStore();
 
   if (options?.replaceExisting) {
-    writeLocks(incoming);
+    writeStore(incoming.locks, incoming.history);
 
     return {
-      added: incoming.length,
-      replaced: existing.length,
-      total: incoming.length
+      added: incoming.locks.length,
+      replaced: existing.locks.length,
+      total: incoming.locks.length
     };
   }
 
-  if (!incoming.length) {
+  if (!incoming.locks.length && !incoming.history.length) {
     return {
       added: 0,
       replaced: 0,
-      total: existing.length
+      total: existing.locks.length
     };
   }
 
-  const existingSessionIds = new Set(existing.map((entry) => entry.sessionId));
-  const merged = compactLocks([...incoming, ...existing]);
-  const added = merged.filter((entry) => !existingSessionIds.has(entry.sessionId)).length;
-  const replaced = incoming.filter((entry) => existingSessionIds.has(entry.sessionId)).length;
+  const existingSessionIds = new Set(existing.locks.map((entry) => entry.sessionId));
+  const mergedLocks = compactLocks([...incoming.locks, ...existing.locks]);
+  const mergedHistory = compactHistory([...incoming.history, ...existing.history]);
+  const added = mergedLocks.filter((entry) => !existingSessionIds.has(entry.sessionId)).length;
+  const replaced = incoming.locks.filter((entry) => existingSessionIds.has(entry.sessionId)).length;
 
-  writeLocks(merged);
+  writeStore(mergedLocks, mergedHistory);
 
   return {
     added,
     replaced,
-    total: merged.length
+    total: mergedLocks.length
   };
 }
