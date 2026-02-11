@@ -8,6 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "generate:test-track": "node scripts/generate-test-track.mjs"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
     "recharts": "2.15.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "22.10.2",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",

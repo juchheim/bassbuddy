@@ -73,6 +73,15 @@ This MVP is intentionally relative and decision-focused:
   ```bash
   npm run build
   ```
+- End-to-end tests (Playwright):
+  ```bash
+  npx playwright install chromium
+  npm run test:e2e
+  ```
+  Optional headed mode:
+  ```bash
+  npm run test:e2e:headed
+  ```
 
 ## Test Track Details
 File: `public/test-tracks/bassbuddy_mvp.wav`
