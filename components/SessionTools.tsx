@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { clearDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
 import { resetExperimentSessions } from "@/lib/storage/experimentSessions";
 import { clearGuidedSession } from "@/lib/storage/guidedSession";
-import { clearRuns, exportRunsPayload, importRunsJson, listRuns } from "@/lib/storage/runsStore";
+import { exportSessionBundle, importSessionBundleJson } from "@/lib/storage/sessionBundle";
+import { clearRuns, listRuns } from "@/lib/storage/runsStore";
 
 interface SessionToolsProps {
   onChanged?: () => void;
@@ -15,7 +16,7 @@ function suggestedFilename(): string {
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const dd = String(now.getDate()).padStart(2, "0");
-  return `bassbuddy-runs-${yyyy}${mm}${dd}.json`;
+  return `bassbuddy-session-bundle-${yyyy}${mm}${dd}.json`;
 }
 
 export function SessionTools({ onChanged }: SessionToolsProps) {
@@ -73,7 +74,7 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
         type="button"
         className="cta ctaSecondary"
         onClick={() => {
-          const payload = exportRunsPayload();
+          const payload = exportSessionBundle();
           const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
           const url = URL.createObjectURL(blob);
           const anchor = document.createElement("a");
@@ -81,10 +82,15 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           anchor.download = suggestedFilename();
           anchor.click();
           URL.revokeObjectURL(url);
-          setMessage(`Exported ${payload.runs.length} run${payload.runs.length === 1 ? "" : "s"} to JSON.`);
+          const runCount = payload.runs.runs.length;
+          const sessionCount = payload.experimentSessions.sessions.length;
+          const snapshotCount = payload.decisionSnapshots.snapshots.length;
+          setMessage(
+            `Exported full bundle: ${runCount} run${runCount === 1 ? "" : "s"}, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, ${snapshotCount} snapshot${snapshotCount === 1 ? "" : "s"}.`
+          );
         }}
       >
-        Export Runs (JSON)
+        Export Full Session Bundle (JSON)
       </button>
 
       <label style={{ display: "grid", gap: 6 }}>
@@ -93,8 +99,8 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           value={replaceExisting ? "replace" : "merge"}
           onChange={(event) => setReplaceExisting(event.target.value === "replace")}
         >
-          <option value="merge">Merge with existing runs</option>
-          <option value="replace">Replace existing runs</option>
+          <option value="merge">Merge with existing local data</option>
+          <option value="replace">Replace all local data</option>
         </select>
       </label>
 
@@ -115,14 +121,22 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           setBusy(true);
           try {
             const text = await file.text();
-            const result = importRunsJson(text, { replaceExisting });
+            const result = importSessionBundleJson(text, { replaceExisting });
             setTotalRuns(listRuns().length);
             onChanged?.();
-            setMessage(
-              replaceExisting
-                ? `Imported ${result.added} run${result.added === 1 ? "" : "s"} (replaced ${result.replaced}).`
-                : `Imported ${result.added} new run${result.added === 1 ? "" : "s"} (total ${result.total}).`
-            );
+            if (result.format === "runs-legacy") {
+              setMessage(
+                replaceExisting
+                  ? `Imported legacy runs-only JSON: replaced ${result.runs.replaced} run${result.runs.replaced === 1 ? "" : "s"}, now ${result.runs.total} total.`
+                  : `Imported legacy runs-only JSON: +${result.runs.added} run${result.runs.added === 1 ? "" : "s"} (total ${result.runs.total}).`
+              );
+            } else {
+              setMessage(
+                replaceExisting
+                  ? `Imported full bundle (replace): ${result.runs.total} runs, ${result.sessions.total} sessions, ${result.decisionSnapshots.total} snapshots.`
+                  : `Imported full bundle (merge): +${result.runs.added} runs, +${result.sessions.added} sessions, +${result.decisionSnapshots.added} snapshots.`
+              );
+            }
           } catch (error) {
             const detail = error instanceof Error ? error.message : "Unknown parse error.";
             setMessage(`Import failed: ${detail}`);
@@ -134,7 +148,7 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           }
         }}
       >
-        {busy ? "Importing..." : "Import Runs (JSON)"}
+        {busy ? "Importing..." : "Import Session JSON"}
       </button>
 
       <p className="muted" style={{ margin: 0 }}>

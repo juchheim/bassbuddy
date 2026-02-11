@@ -20,6 +20,23 @@ interface ListExperimentSessionsOptions {
   archivedOnly?: boolean;
 }
 
+export interface ExperimentSessionsExportPayload {
+  version: 1;
+  sessions: ExperimentSession[];
+  activeSessionId: string;
+}
+
+export interface ImportExperimentSessionsOptions {
+  replaceExisting?: boolean;
+}
+
+export interface ImportExperimentSessionsResult {
+  added: number;
+  replaced: number;
+  total: number;
+  activeSessionId: string;
+}
+
 export interface ArchiveSessionResult {
   archivedSession: ExperimentSession;
   nextActiveSessionId: string;
@@ -214,6 +231,45 @@ function saveStore(store: ExperimentSessionsStoreV1): void {
   localStorage.setItem(EXPERIMENT_SESSIONS_STORAGE_KEY, JSON.stringify(store));
 }
 
+function parseImportPayload(payload: unknown): { sessions: ExperimentSession[]; activeSessionId?: string } {
+  if (Array.isArray(payload)) {
+    return {
+      sessions: compactSessions(parseSessions(payload))
+    };
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return {
+      sessions: []
+    };
+  }
+
+  const parsed = payload as Partial<ExperimentSessionsStoreV1> & { sessions?: unknown };
+
+  return {
+    sessions: compactSessions(parseSessions(parsed.sessions)),
+    activeSessionId: typeof parsed.activeSessionId === "string" ? parsed.activeSessionId : undefined
+  };
+}
+
+function writeImportedStore(store: ExperimentSessionsStoreV1): ExperimentSessionsStoreV1 {
+  const sessions = compactSessions(store.sessions);
+  const activeSessionId = resolveActiveSessionId({
+    version: 1,
+    sessions,
+    activeSessionId: store.activeSessionId
+  });
+
+  const nextStore: ExperimentSessionsStoreV1 = {
+    version: 1,
+    sessions,
+    activeSessionId
+  };
+
+  saveStore(nextStore);
+  return nextStore;
+}
+
 export function listExperimentSessions(options?: ListExperimentSessionsOptions): ExperimentSession[] {
   const sessions = sortSessions(loadStore().sessions);
 
@@ -226,6 +282,72 @@ export function listExperimentSessions(options?: ListExperimentSessionsOptions):
   }
 
   return sessions.filter((session) => !session.archivedAt);
+}
+
+export function exportExperimentSessionsPayload(): ExperimentSessionsExportPayload {
+  const store = loadStore();
+  const activeSessionId = resolveActiveSessionId(store);
+
+  return {
+    version: 1,
+    sessions: sortSessions(store.sessions),
+    activeSessionId
+  };
+}
+
+export function importExperimentSessionsPayload(
+  payload: unknown,
+  options?: ImportExperimentSessionsOptions
+): ImportExperimentSessionsResult {
+  const existingStore = loadStore();
+  const parsed = parseImportPayload(payload);
+  const existingIds = new Set(existingStore.sessions.map((session) => session.id));
+
+  if (options?.replaceExisting) {
+    const activeCandidate = parsed.activeSessionId ?? parsed.sessions[0]?.id ?? DEFAULT_EXPERIMENT_SESSION_ID;
+    const replacedStore = writeImportedStore({
+      version: 1,
+      sessions: parsed.sessions.length ? parsed.sessions : [defaultSession()],
+      activeSessionId: activeCandidate
+    });
+
+    return {
+      added: replacedStore.sessions.length,
+      replaced: existingStore.sessions.length,
+      total: replacedStore.sessions.length,
+      activeSessionId: replacedStore.activeSessionId
+    };
+  }
+
+  if (!parsed.sessions.length) {
+    const activeSessionId = resolveActiveSessionId(existingStore);
+
+    return {
+      added: 0,
+      replaced: 0,
+      total: existingStore.sessions.length,
+      activeSessionId
+    };
+  }
+
+  const mergedStore = writeImportedStore({
+    version: 1,
+    sessions: [...parsed.sessions, ...existingStore.sessions],
+    activeSessionId:
+      parsed.activeSessionId && parsed.sessions.some((session) => session.id === parsed.activeSessionId)
+        ? parsed.activeSessionId
+        : existingStore.activeSessionId
+  });
+
+  const added = mergedStore.sessions.filter((session) => !existingIds.has(session.id)).length;
+  const replaced = parsed.sessions.filter((session) => existingIds.has(session.id)).length;
+
+  return {
+    added,
+    replaced,
+    total: mergedStore.sessions.length,
+    activeSessionId: mergedStore.activeSessionId
+  };
 }
 
 export function getExperimentSessionById(sessionId: string): ExperimentSession | null {

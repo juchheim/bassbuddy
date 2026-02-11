@@ -411,7 +411,7 @@ export default function HomePage() {
       <section className="panel" style={{ marginTop: 12 }}>
         <h2 className={styles.sectionTitle}>Session Tools</h2>
         <p className="muted">
-          Start fresh, export your local runs to JSON backup, or import a saved run set (merge or replace).
+          Start fresh, export a full JSON backup bundle, or import a saved bundle (merge or replace all local data).
         </p>
         <SessionTools onChanged={() => setRefreshTick((value) => value + 1)} />
       </section>

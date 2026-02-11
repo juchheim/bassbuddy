@@ -38,6 +38,17 @@ export interface StartGuidedSessionOptions {
   labelOverrides?: GuidedLabelOverrides;
 }
 
+export interface ImportGuidedSessionOptions {
+  replaceExisting?: boolean;
+}
+
+export interface ImportGuidedSessionResult {
+  imported: boolean;
+  replaced: boolean;
+  cleared: boolean;
+  active: boolean;
+}
+
 const GUIDED_SESSION_KEY = "bassbuddy.v1.guidedSession";
 const GUIDED_SESSION_VERSION = 1;
 
@@ -204,6 +215,19 @@ function saveGuidedSession(session: GuidedSessionV1): void {
   localStorage.setItem(GUIDED_SESSION_KEY, JSON.stringify(session));
 }
 
+function writeGuidedSession(session: GuidedSessionV1 | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!session) {
+    localStorage.removeItem(GUIDED_SESSION_KEY);
+    return;
+  }
+
+  localStorage.setItem(GUIDED_SESSION_KEY, JSON.stringify(session));
+}
+
 export function clearGuidedSession(): void {
   if (typeof window === "undefined") {
     return;
@@ -228,6 +252,81 @@ export function getGuidedSession(): GuidedSessionV1 | null {
   } catch {
     return null;
   }
+}
+
+export function exportGuidedSessionPayload(): GuidedSessionV1 | null {
+  return getGuidedSession();
+}
+
+export function importGuidedSessionPayload(
+  payload: unknown,
+  options?: ImportGuidedSessionOptions
+): ImportGuidedSessionResult {
+  const existing = getGuidedSession();
+  const parsedCandidate =
+    payload && typeof payload === "object" && "guidedSession" in payload
+      ? parseGuidedSession((payload as { guidedSession?: unknown }).guidedSession)
+      : parseGuidedSession(payload);
+
+  if (!parsedCandidate) {
+    if (options?.replaceExisting && existing) {
+      writeGuidedSession(null);
+      return {
+        imported: false,
+        replaced: false,
+        cleared: true,
+        active: false
+      };
+    }
+
+    return {
+      imported: false,
+      replaced: false,
+      cleared: false,
+      active: Boolean(existing)
+    };
+  }
+
+  if (!existing) {
+    writeGuidedSession(parsedCandidate);
+    return {
+      imported: true,
+      replaced: false,
+      cleared: false,
+      active: true
+    };
+  }
+
+  if (options?.replaceExisting) {
+    writeGuidedSession(parsedCandidate);
+    return {
+      imported: true,
+      replaced: true,
+      cleared: false,
+      active: true
+    };
+  }
+
+  const existingUpdatedAt = new Date(existing.updatedAt).getTime();
+  const incomingUpdatedAt = new Date(parsedCandidate.updatedAt).getTime();
+  const shouldReplace = Number.isFinite(incomingUpdatedAt) && incomingUpdatedAt > existingUpdatedAt;
+
+  if (shouldReplace) {
+    writeGuidedSession(parsedCandidate);
+    return {
+      imported: true,
+      replaced: true,
+      cleared: false,
+      active: true
+    };
+  }
+
+  return {
+    imported: false,
+    replaced: false,
+    cleared: false,
+    active: true
+  };
 }
 
 export function getGuidedSessionForMode(mode: RunMode): GuidedSessionV1 | null {

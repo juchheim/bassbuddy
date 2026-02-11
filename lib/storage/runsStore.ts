@@ -239,16 +239,25 @@ export function exportRunsPayload(mode?: RunMode, sessionId?: string): RunsExpor
 
 function importRunsRaw(raw: unknown, options?: ImportRunsOptions): ImportRunsResult {
   const incoming = compactRuns(parseRuns(raw));
+  const existing = loadStore().runs;
 
   if (!incoming.length) {
+    if (options?.replaceExisting) {
+      const replaced = clearRuns();
+
+      return {
+        added: 0,
+        replaced,
+        total: 0
+      };
+    }
+
     return {
       added: 0,
       replaced: 0,
-      total: loadStore().runs.length
+      total: existing.length
     };
   }
-
-  const existing = loadStore().runs;
 
   if (options?.replaceExisting) {
     writeRuns(incoming);

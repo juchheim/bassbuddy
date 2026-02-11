@@ -19,6 +19,21 @@ interface DecisionSnapshotsStoreV1 {
   snapshots: DecisionSnapshotV1[];
 }
 
+export interface DecisionSnapshotsExportPayload {
+  version: 1;
+  snapshots: DecisionSnapshotV1[];
+}
+
+export interface ImportDecisionSnapshotsOptions {
+  replaceExisting?: boolean;
+}
+
+export interface ImportDecisionSnapshotsResult {
+  added: number;
+  replaced: number;
+  total: number;
+}
+
 function emptyStore(): DecisionSnapshotsStoreV1 {
   return {
     version: DECISION_SNAPSHOTS_VERSION,
@@ -129,6 +144,19 @@ function writeSnapshots(snapshots: DecisionSnapshotV1[]): void {
   });
 }
 
+function parseImportPayload(payload: unknown): DecisionSnapshotV1[] {
+  if (Array.isArray(payload)) {
+    return compactSnapshots(parseSnapshots(payload));
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const parsed = payload as Partial<DecisionSnapshotsStoreV1> & { snapshots?: unknown };
+  return compactSnapshots(parseSnapshots(parsed.snapshots));
+}
+
 export function listDecisionSnapshots(sessionId?: string): DecisionSnapshotV1[] {
   const snapshots = loadStore().snapshots;
 
@@ -137,6 +165,52 @@ export function listDecisionSnapshots(sessionId?: string): DecisionSnapshotV1[] 
   }
 
   return sortSnapshots(snapshots.filter((snapshot) => snapshot.sessionId === sessionId));
+}
+
+export function exportDecisionSnapshotsPayload(): DecisionSnapshotsExportPayload {
+  return {
+    version: 1,
+    snapshots: listDecisionSnapshots()
+  };
+}
+
+export function importDecisionSnapshotsPayload(
+  payload: unknown,
+  options?: ImportDecisionSnapshotsOptions
+): ImportDecisionSnapshotsResult {
+  const incoming = parseImportPayload(payload);
+  const existing = loadStore().snapshots;
+
+  if (options?.replaceExisting) {
+    writeSnapshots(incoming);
+
+    return {
+      added: incoming.length,
+      replaced: existing.length,
+      total: incoming.length
+    };
+  }
+
+  if (!incoming.length) {
+    return {
+      added: 0,
+      replaced: 0,
+      total: existing.length
+    };
+  }
+
+  const existingIds = new Set(existing.map((snapshot) => snapshot.id));
+  const merged = compactSnapshots([...incoming, ...existing]);
+  const added = merged.filter((snapshot) => !existingIds.has(snapshot.id)).length;
+  const replaced = incoming.filter((snapshot) => existingIds.has(snapshot.id)).length;
+
+  writeSnapshots(merged);
+
+  return {
+    added,
+    replaced,
+    total: merged.length
+  };
 }
 
 export function saveDecisionSnapshot(

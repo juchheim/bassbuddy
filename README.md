@@ -21,7 +21,7 @@ This MVP is intentionally relative and decision-focused:
 - Supports multi-seat compromise mode (Center/Left/Right seat weighting for A vs B).
 - Supports placement scout mode (auto-rank candidate locations and promote top two into guided A/B).
 - Enforces run-to-run volume consistency gates to catch level drift between captures.
-- Includes local session tools: fresh-session reset plus JSON export/import.
+- Includes local session tools: fresh-session reset plus full JSON bundle export/import (sessions, runs, snapshots, guided state, setup prefs).
 - Includes Final Decision Assistant page that fuses all evidence, assigns confidence, and exports/prints a report.
 - Supports Decision Snapshots so you can track recommendation changes before/after placement moves.
 - Supports named experiment sessions; new runs and decision snapshots attach to the active session.
@@ -132,6 +132,10 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - Save decision snapshots and compare against current recommendations over time
    - Export one-click decision report JSON
    - Print a concise decision summary
+8. In Session Tools (Home):
+   - Export a full local backup bundle before major experiments
+   - Import bundle in merge mode to append prior sessions
+   - Import bundle in replace mode to restore an entire saved state
 
 ## Practical Use Notes
 - These are **relative** results, not calibrated SPL.
