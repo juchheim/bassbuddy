@@ -3,7 +3,7 @@ import { applySeed } from "./helpers/storageSeed";
 
 test("full session bundle export/import restores data after fresh reset", async ({ page }, testInfo) => {
   await applySeed(page);
-  await page.goto("/");
+  await page.goto("/advanced");
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),

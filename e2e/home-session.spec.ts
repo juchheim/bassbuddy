@@ -1,19 +1,17 @@
 import { expect, test } from "@playwright/test";
 import { applySeed } from "./helpers/storageSeed";
 
-test("home supports session archive and restore with summary", async ({ page }) => {
+test("home is simple-first and links to advanced tools", async ({ page }) => {
   await applySeed(page);
 
-  await expect(page.getByRole("heading", { name: "Sub Placement Coach" })).toBeVisible();
-  await expect(page.getByText(/Active session:\s*Living Room Test/)).toBeVisible();
-  await expect(page.getByText(/Best A\/B result:\s*Placement B/)).toBeVisible();
-  await expect(page.getByText(/Best phase result:\s*Phase 180/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "BassBuddy (MVP)" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start Baseline" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start A/B" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start Phase Test" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Archive Session" })).toHaveCount(0);
 
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Archive Session" }).click();
-  await expect(page.getByText(/Archived "Living Room Test"/)).toBeVisible();
-
-  await page.getByRole("button", { name: /Show Archived Sessions/ }).click();
-  await page.getByRole("button", { name: "Restore" }).click();
-  await expect(page.getByText(/Restored "Living Room Test"/)).toBeVisible();
+  await page.getByRole("link", { name: "Advanced Tools" }).click();
+  await expect(page).toHaveURL("/advanced");
+  await expect(page.getByRole("heading", { name: "Advanced Tools" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start Fresh Session" })).toBeVisible();
 });
