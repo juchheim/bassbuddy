@@ -15,6 +15,15 @@
   margin-top: 10px;
 }
 
+.sessionPanel {
+  margin-top: 12px;
+}
+
+.sessionControls {
+  display: grid;
+  gap: 8px;
+}
+
 .quickActions {
   display: grid;
   gap: 8px;

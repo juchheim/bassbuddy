@@ -6,6 +6,10 @@ import { resetExperimentSessions } from "@/lib/storage/experimentSessions";
 import { clearGuidedSession } from "@/lib/storage/guidedSession";
 import { clearRuns, exportRunsPayload, importRunsJson, listRuns } from "@/lib/storage/runsStore";
 
+interface SessionToolsProps {
+  onChanged?: () => void;
+}
+
 function suggestedFilename(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -14,7 +18,7 @@ function suggestedFilename(): string {
   return `bassbuddy-runs-${yyyy}${mm}${dd}.json`;
 }
 
-export function SessionTools() {
+export function SessionTools({ onChanged }: SessionToolsProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,6 +44,7 @@ export function SessionTools() {
           const removedSnapshots = clearDecisionSnapshots();
           resetExperimentSessions();
           clearGuidedSession();
+          onChanged?.();
           setMessage(
             `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"}, ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}, and reset experiment sessions.`
           );
@@ -95,6 +100,7 @@ export function SessionTools() {
           try {
             const text = await file.text();
             const result = importRunsJson(text, { replaceExisting });
+            onChanged?.();
             setMessage(
               replaceExisting
                 ? `Imported ${result.added} run${result.added === 1 ? "" : "s"} (replaced ${result.replaced}).`
