@@ -15,7 +15,7 @@ import {
   isGuidedSessionComplete,
   type GuidedSessionV1
 } from "@/lib/storage/guidedSession";
-import { listExperimentSessions } from "@/lib/storage/experimentSessions";
+import { getExperimentSessionById } from "@/lib/storage/experimentSessions";
 import { deleteRun, getRunById, listRuns, updateRun } from "@/lib/storage/runsStore";
 import type { BassRun } from "@/lib/types";
 import { modeTitle } from "@/lib/utils/mode";
@@ -51,8 +51,7 @@ export default function ResultsPage() {
       return null;
     }
 
-    const session = listExperimentSessions().find((entry) => entry.id === run.sessionId);
-    return session?.name ?? null;
+    return getExperimentSessionById(run.sessionId)?.name ?? null;
   }, [run?.sessionId]);
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;

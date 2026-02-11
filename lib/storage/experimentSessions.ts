@@ -12,6 +12,17 @@ export interface ExperimentSession {
   name: string;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
+}
+
+interface ListExperimentSessionsOptions {
+  includeArchived?: boolean;
+  archivedOnly?: boolean;
+}
+
+export interface ArchiveSessionResult {
+  archivedSession: ExperimentSession;
+  nextActiveSessionId: string;
 }
 
 interface ExperimentSessionsStoreV1 {
@@ -42,7 +53,32 @@ function emptyStore(): ExperimentSessionsStoreV1 {
 }
 
 function sortSessions(sessions: ExperimentSession[]): ExperimentSession[] {
-  return [...sessions].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  return [...sessions].sort((a, b) => {
+    const aArchived = Boolean(a.archivedAt);
+    const bArchived = Boolean(b.archivedAt);
+
+    if (aArchived !== bArchived) {
+      return aArchived ? 1 : -1;
+    }
+
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+}
+
+function normalizeDefaultSession(session: ExperimentSession): ExperimentSession {
+  if (session.id !== DEFAULT_EXPERIMENT_SESSION_ID) {
+    return session;
+  }
+
+  return {
+    ...session,
+    name: DEFAULT_EXPERIMENT_SESSION_NAME,
+    archivedAt: undefined
+  };
+}
+
+function visibleSessions(sessions: ExperimentSession[]): ExperimentSession[] {
+  return sessions.filter((session) => !session.archivedAt);
 }
 
 function compactSessions(sessions: ExperimentSession[]): ExperimentSession[] {
@@ -54,13 +90,17 @@ function compactSessions(sessions: ExperimentSession[]): ExperimentSession[] {
     }
   }
 
-  const compacted = Array.from(deduped.values()).slice(0, MAX_EXPERIMENT_SESSIONS);
+  const dedupedList = Array.from(deduped.values());
+  let compacted = dedupedList.slice(0, MAX_EXPERIMENT_SESSIONS);
 
   if (!compacted.some((session) => session.id === DEFAULT_EXPERIMENT_SESSION_ID)) {
-    compacted.push(defaultSession());
+    const existingDefault = dedupedList.find((session) => session.id === DEFAULT_EXPERIMENT_SESSION_ID);
+    compacted = [existingDefault ?? defaultSession(), ...compacted].slice(0, MAX_EXPERIMENT_SESSIONS);
   }
 
-  return sortSessions(compacted);
+  const normalized = compacted.map(normalizeDefaultSession);
+
+  return sortSessions(normalized);
 }
 
 function normalizeSession(raw: unknown): ExperimentSession | null {
@@ -85,7 +125,8 @@ function normalizeSession(raw: unknown): ExperimentSession | null {
         ? DEFAULT_EXPERIMENT_SESSION_NAME
         : "Unnamed Session",
     createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : now,
-    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now
+    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : now,
+    archivedAt: typeof candidate.archivedAt === "string" && candidate.archivedAt.trim() ? candidate.archivedAt : undefined
   };
 }
 
@@ -95,6 +136,17 @@ function parseSessions(raw: unknown): ExperimentSession[] {
   }
 
   return raw.map(normalizeSession).filter((entry): entry is ExperimentSession => Boolean(entry));
+}
+
+function resolveActiveSessionId(store: ExperimentSessionsStoreV1): string {
+  const visible = visibleSessions(store.sessions);
+  const activeVisible = visible.find((session) => session.id === store.activeSessionId);
+
+  if (activeVisible) {
+    return activeVisible.id;
+  }
+
+  return visible[0]?.id ?? DEFAULT_EXPERIMENT_SESSION_ID;
 }
 
 function migrateStore(raw: unknown): ExperimentSessionsStoreV1 {
@@ -109,10 +161,16 @@ function migrateStore(raw: unknown): ExperimentSessionsStoreV1 {
   }
 
   const sessions = compactSessions(parseSessions(parsed.sessions));
-  const activeSessionId =
+  const candidateActive =
     typeof parsed.activeSessionId === "string" && sessions.some((session) => session.id === parsed.activeSessionId)
       ? parsed.activeSessionId
       : sessions[0]?.id ?? DEFAULT_EXPERIMENT_SESSION_ID;
+
+  const activeSessionId = resolveActiveSessionId({
+    version: 1,
+    sessions,
+    activeSessionId: candidateActive
+  });
 
   return {
     version: 1,
@@ -156,23 +214,56 @@ function saveStore(store: ExperimentSessionsStoreV1): void {
   localStorage.setItem(EXPERIMENT_SESSIONS_STORAGE_KEY, JSON.stringify(store));
 }
 
-export function listExperimentSessions(): ExperimentSession[] {
-  return sortSessions(loadStore().sessions);
+export function listExperimentSessions(options?: ListExperimentSessionsOptions): ExperimentSession[] {
+  const sessions = sortSessions(loadStore().sessions);
+
+  if (options?.archivedOnly) {
+    return sessions.filter((session) => Boolean(session.archivedAt));
+  }
+
+  if (options?.includeArchived) {
+    return sessions;
+  }
+
+  return sessions.filter((session) => !session.archivedAt);
+}
+
+export function getExperimentSessionById(sessionId: string): ExperimentSession | null {
+  return loadStore().sessions.find((session) => session.id === sessionId) ?? null;
 }
 
 export function getActiveExperimentSessionId(): string {
-  return loadStore().activeSessionId;
+  const store = loadStore();
+  const resolvedActiveSessionId = resolveActiveSessionId(store);
+
+  if (resolvedActiveSessionId !== store.activeSessionId) {
+    saveStore({
+      ...store,
+      activeSessionId: resolvedActiveSessionId
+    });
+  }
+
+  return resolvedActiveSessionId;
 }
 
 export function getActiveExperimentSession(): ExperimentSession | null {
   const store = loadStore();
-  return store.sessions.find((session) => session.id === store.activeSessionId) ?? null;
+  const activeSessionId = resolveActiveSessionId(store);
+
+  if (activeSessionId !== store.activeSessionId) {
+    saveStore({
+      ...store,
+      activeSessionId
+    });
+  }
+
+  return store.sessions.find((session) => session.id === activeSessionId && !session.archivedAt) ?? null;
 }
 
 export function setActiveExperimentSession(sessionId: string): boolean {
   const store = loadStore();
 
-  if (!store.sessions.some((session) => session.id === sessionId)) {
+  if (!store.sessions.some((session) => session.id === sessionId && !session.archivedAt)) {
     return false;
   }
 
@@ -262,6 +353,85 @@ export function renameExperimentSession(sessionId: string, name: string): Experi
   return updated;
 }
 
+export function archiveExperimentSession(sessionId: string): ArchiveSessionResult | null {
+  if (sessionId === DEFAULT_EXPERIMENT_SESSION_ID) {
+    return null;
+  }
+
+  const store = loadStore();
+  const now = new Date().toISOString();
+  let archivedSession: ExperimentSession | null = null;
+
+  const sessions = store.sessions.map((session) => {
+    if (session.id !== sessionId || session.archivedAt) {
+      return session;
+    }
+
+    archivedSession = {
+      ...session,
+      archivedAt: now,
+      updatedAt: now
+    };
+
+    return archivedSession;
+  });
+
+  if (!archivedSession) {
+    return null;
+  }
+
+  const compactedSessions = compactSessions(sessions);
+  const nextActiveSessionId = resolveActiveSessionId({
+    version: 1,
+    sessions: compactedSessions,
+    activeSessionId: store.activeSessionId
+  });
+
+  saveStore({
+    version: 1,
+    sessions: compactedSessions,
+    activeSessionId: nextActiveSessionId
+  });
+
+  return {
+    archivedSession,
+    nextActiveSessionId
+  };
+}
+
+export function restoreExperimentSession(sessionId: string): ExperimentSession | null {
+  const store = loadStore();
+  const now = new Date().toISOString();
+  let restoredSession: ExperimentSession | null = null;
+
+  const sessions = store.sessions.map((session) => {
+    if (session.id !== sessionId || !session.archivedAt) {
+      return session;
+    }
+
+    restoredSession = {
+      ...session,
+      archivedAt: undefined,
+      updatedAt: now
+    };
+
+    return restoredSession;
+  });
+
+  if (!restoredSession) {
+    return null;
+  }
+
+  const compactedSessions = compactSessions(sessions);
+
+  saveStore({
+    ...store,
+    sessions: compactedSessions
+  });
+
+  return restoredSession;
+}
+
 export function resetExperimentSessions(): void {
   if (typeof window === "undefined") {
     return;
@@ -269,4 +439,3 @@ export function resetExperimentSessions(): void {
 
   localStorage.setItem(EXPERIMENT_SESSIONS_STORAGE_KEY, JSON.stringify(emptyStore()));
 }
-

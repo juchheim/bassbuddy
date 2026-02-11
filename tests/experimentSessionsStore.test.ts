@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  archiveExperimentSession,
   createExperimentSession,
   getActiveExperimentSession,
   getActiveExperimentSessionId,
   listExperimentSessions,
+  restoreExperimentSession,
   renameExperimentSession,
   resetExperimentSessions,
   setActiveExperimentSession
@@ -85,5 +87,44 @@ describe("experimentSessions storage", () => {
     expect(sessions.some((entry) => entry.id === DEFAULT_EXPERIMENT_SESSION_ID)).toBe(true);
     expect(getActiveExperimentSessionId()).toBe(DEFAULT_EXPERIMENT_SESSION_ID);
   });
-});
 
+  it("archives sessions and keeps them out of active selectors", () => {
+    const first = createExperimentSession("Living Room");
+    const second = createExperimentSession("Family Room");
+
+    expect(getActiveExperimentSessionId()).toBe(second.id);
+
+    const archived = archiveExperimentSession(second.id);
+    expect(archived?.archivedSession.id).toBe(second.id);
+    expect(archived?.nextActiveSessionId).not.toBe(second.id);
+    expect(getActiveExperimentSessionId()).toBe(archived?.nextActiveSessionId);
+
+    const visibleSessions = listExperimentSessions();
+    const archivedSessions = listExperimentSessions({ archivedOnly: true });
+
+    expect(visibleSessions.some((entry) => entry.id === second.id)).toBe(false);
+    expect(archivedSessions.some((entry) => entry.id === second.id)).toBe(true);
+    expect(setActiveExperimentSession(second.id)).toBe(false);
+    expect(visibleSessions.some((entry) => entry.id === first.id)).toBe(true);
+  });
+
+  it("restores archived sessions and allows activation", () => {
+    const created = createExperimentSession("Basement");
+    const archived = archiveExperimentSession(created.id);
+    expect(archived).not.toBeNull();
+
+    const restored = restoreExperimentSession(created.id);
+    expect(restored?.id).toBe(created.id);
+
+    const visibleSessions = listExperimentSessions();
+    expect(visibleSessions.some((entry) => entry.id === created.id)).toBe(true);
+    expect(setActiveExperimentSession(created.id)).toBe(true);
+    expect(getActiveExperimentSession()?.id).toBe(created.id);
+  });
+
+  it("does not archive the default session", () => {
+    const result = archiveExperimentSession(DEFAULT_EXPERIMENT_SESSION_ID);
+    expect(result).toBeNull();
+    expect(listExperimentSessions().some((entry) => entry.id === DEFAULT_EXPERIMENT_SESSION_ID)).toBe(true);
+  });
+});

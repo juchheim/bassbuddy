@@ -22,6 +22,49 @@
   margin-bottom: 12px;
 }
 
+.sessionPanel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sessionTitle {
+  margin: 0;
+}
+
+.sessionActions {
+  display: grid;
+  gap: 8px;
+}
+
+.recentRuns {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 8px;
+}
+
+.recentTitle {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.recentList {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 4px;
+}
+
+.recentLink {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.recentLink:hover {
+  text-decoration: underline;
+}
+
 .guidedTitle {
   margin: 0;
 }

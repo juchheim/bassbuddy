@@ -24,7 +24,7 @@ import {
   MAX_RECORD_SECONDS,
   TRACK_DURATION_AFTER_BEEP_SEC
 } from "@/lib/constants/testTrack";
-import { getRunById, saveRun } from "@/lib/storage/runsStore";
+import { getRunById, listRuns, saveRun } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import type { BassRun, MicProcessingRisk, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
@@ -80,7 +80,9 @@ interface PreflightResult {
 export default function RecordPage() {
   const router = useRouter();
   const [mode, setMode] = useState<RunMode>("baseline");
+  const [activeSessionId, setActiveSessionId] = useState<string>("");
   const [activeSessionName, setActiveSessionName] = useState<string>("");
+  const [sessionRefreshTick, setSessionRefreshTick] = useState(0);
   const [setupGate, setSetupGate] = useState<"checking" | "ready">("checking");
 
   const [phase, setPhase] = useState<"idle" | "recording" | "processing">("idle");
@@ -118,11 +120,18 @@ export default function RecordPage() {
   const manualHintRef = useRef<number | null>(manualHintSec);
   manualHintRef.current = manualHintSec;
 
+  const refreshSessionContext = useCallback(() => {
+    const activeSession = getActiveExperimentSession();
+    setActiveSessionId(activeSession?.id ?? "");
+    setActiveSessionName(activeSession?.name ?? "");
+    setSessionRefreshTick((value) => value + 1);
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nextMode = normalizeMode(params.get("mode"));
     setMode(nextMode);
-    setActiveSessionName(getActiveExperimentSession()?.name ?? "");
+    refreshSessionContext();
 
     if (!hasCompletedSetup()) {
       router.replace(`/setup?mode=${nextMode}`);
@@ -131,7 +140,26 @@ export default function RecordPage() {
 
     setGuidedSession(getGuidedSessionForMode(nextMode));
     setSetupGate("ready");
-  }, [router]);
+  }, [refreshSessionContext, router]);
+
+  useEffect(() => {
+    const handleRefresh = () => refreshSessionContext();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        handleRefresh();
+      }
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("storage", handleRefresh);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("storage", handleRefresh);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [refreshSessionContext]);
 
   useEffect(() => {
     if (setupGate !== "ready") {
@@ -493,6 +521,16 @@ export default function RecordPage() {
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
   const guidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
+  const sessionModeRuns = useMemo(
+    () => (activeSessionId ? listRuns(mode, activeSessionId) : []),
+    [activeSessionId, mode, sessionRefreshTick]
+  );
+  const sessionTotalRuns = useMemo(
+    () => (activeSessionId ? listRuns(undefined, activeSessionId).length : 0),
+    [activeSessionId, sessionRefreshTick]
+  );
+  const recentModeRuns = sessionModeRuns.slice(0, 3);
+  const compareHref = `/compare?mode=${mode}${activeSessionId ? `&session=${encodeURIComponent(activeSessionId)}` : ""}`;
 
   if (setupGate === "checking") {
     return (
@@ -514,6 +552,49 @@ export default function RecordPage() {
         <p className="muted">Mode: {modeTitle(mode)}</p>
         {activeSessionName ? <p className="muted">Session: {activeSessionName}</p> : null}
       </header>
+
+      <section className={`panel ${styles.sessionPanel}`}>
+        <h2 className={styles.sessionTitle}>Session Context</h2>
+        <p className="muted">
+          Active: <strong>{activeSessionName || "No active session"}</strong>
+        </p>
+        <p className="muted">
+          This mode: {sessionModeRuns.length} run{sessionModeRuns.length === 1 ? "" : "s"} | Session total:{" "}
+          {sessionTotalRuns} run{sessionTotalRuns === 1 ? "" : "s"}
+        </p>
+        <div className={styles.sessionActions}>
+          <Link href={compareHref} className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Compare
+          </Link>
+          <Link href="/decision" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Decision Assistant
+          </Link>
+          <Link href="/" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Switch Session
+          </Link>
+        </div>
+        <div className={styles.recentRuns}>
+          <p className={styles.recentTitle}>Recent captures in this mode</p>
+          {recentModeRuns.length ? (
+            <ul className={styles.recentList}>
+              {recentModeRuns.map((run) => (
+                <li key={run.id}>
+                  <Link href={`/results/${run.id}`} className={styles.recentLink}>
+                    {(run.label ?? "Unlabeled run") + " · "}
+                    {new Date(run.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {" · score "}
+                    {run.score.toFixed(1)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>
+              No prior captures in this mode for this session yet.
+            </p>
+          )}
+        </div>
+      </section>
 
       {guidedSession ? (
         <section className={`${styles.guidedPanel} panel`}>
@@ -542,7 +623,7 @@ export default function RecordPage() {
               Clear Guided Session
             </button>
             {guidedComplete ? (
-              <Link href={`/compare?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
+              <Link href={compareHref} className="cta" style={{ textAlign: "center" }}>
                 Open Compare
               </Link>
             ) : null}

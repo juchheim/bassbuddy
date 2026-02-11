@@ -24,6 +24,32 @@
   gap: 8px;
 }
 
+.archivedPanel {
+  display: grid;
+  gap: 8px;
+}
+
+.archivedList {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.archivedItem {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 8px;
+}
+
+.summaryPanel {
+  margin-top: 12px;
+}
+
 .quickActions {
   display: grid;
   gap: 8px;

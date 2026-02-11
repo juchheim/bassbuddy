@@ -4,16 +4,21 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ModeCard } from "@/components/ModeCard";
 import { SessionTools } from "@/components/SessionTools";
+import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
+import { listDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
 import {
+  archiveExperimentSession,
   createExperimentSession,
   getActiveExperimentSessionId,
   listExperimentSessions,
+  restoreExperimentSession,
   setActiveExperimentSession,
   type ExperimentSession
 } from "@/lib/storage/experimentSessions";
 import { listRuns } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import type { RunMode } from "@/lib/types";
+import { buildDecisionReport, compareDecisionReports } from "@/lib/utils/decisionAssistant";
 import styles from "@/app/page.module.css";
 
 function startHref(mode: RunMode, setupCompleted: boolean): string {
@@ -28,8 +33,10 @@ export default function HomePage() {
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [sessions, setSessions] = useState<ExperimentSession[]>([]);
+  const [archivedSessions, setArchivedSessions] = useState<ExperimentSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState("");
   const [refreshTick, setRefreshTick] = useState(0);
+  const [showArchived, setShowArchived] = useState(false);
   const [sessionMessage, setSessionMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,7 +44,9 @@ export default function HomePage() {
     setPrefsLoaded(true);
 
     const availableSessions = listExperimentSessions();
+    const hiddenSessions = listExperimentSessions({ archivedOnly: true });
     setSessions(availableSessions);
+    setArchivedSessions(hiddenSessions);
 
     if (!availableSessions.length) {
       setActiveSessionId("");
@@ -86,19 +95,66 @@ export default function HomePage() {
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions]
   );
+  const sessionRuns = useMemo(
+    () => (activeSessionId ? listRuns(undefined, activeSessionId) : []),
+    [activeSessionId, refreshTick]
+  );
 
   const runCounts = useMemo(() => {
-    const sessionId = activeSessionId || undefined;
+    if (!activeSessionId) {
+      return {
+        baseline: 0,
+        ab: 0,
+        phase: 0,
+        multiseat: 0,
+        scout: 0,
+        total: 0
+      };
+    }
 
     return {
-      baseline: listRuns("baseline", sessionId).length,
-      ab: listRuns("ab", sessionId).length,
-      phase: listRuns("phase", sessionId).length,
-      multiseat: listRuns("multiseat", sessionId).length,
-      scout: listRuns("scout", sessionId).length,
-      total: listRuns(undefined, sessionId).length
+      baseline: listRuns("baseline", activeSessionId).length,
+      ab: listRuns("ab", activeSessionId).length,
+      phase: listRuns("phase", activeSessionId).length,
+      multiseat: listRuns("multiseat", activeSessionId).length,
+      scout: listRuns("scout", activeSessionId).length,
+      total: listRuns(undefined, activeSessionId).length
     };
   }, [activeSessionId, refreshTick]);
+  const sessionReport = useMemo(() => buildDecisionReport(sessionRuns), [sessionRuns]);
+  const sessionSnapshots = useMemo(
+    () => listDecisionSnapshots(activeSessionId || undefined),
+    [activeSessionId, refreshTick]
+  );
+  const confidenceTrend = useMemo(() => {
+    if (!sessionSnapshots.length) {
+      return {
+        direction: "flat" as const,
+        text: "No decision snapshots yet. Save one in Decision Assistant to track trend."
+      };
+    }
+
+    if (sessionSnapshots.length >= 2) {
+      const latest = sessionSnapshots[0];
+      const previous = sessionSnapshots[1];
+      const delta = compareDecisionReports(previous.report, latest.report);
+      const direction = delta.overallScoreDelta > 1 ? "up" : delta.overallScoreDelta < -1 ? "down" : "flat";
+
+      return {
+        direction,
+        text: `Latest snapshot trend: ${delta.overallScoreDelta >= 0 ? "+" : ""}${delta.overallScoreDelta.toFixed(1)} points vs previous snapshot.`
+      };
+    }
+
+    const baseline = sessionSnapshots[0];
+    const delta = compareDecisionReports(baseline.report, sessionReport);
+    const direction = delta.overallScoreDelta > 1 ? "up" : delta.overallScoreDelta < -1 ? "down" : "flat";
+
+    return {
+      direction,
+      text: `Current report vs latest snapshot: ${delta.overallScoreDelta >= 0 ? "+" : ""}${delta.overallScoreDelta.toFixed(1)} points.`
+    };
+  }, [sessionReport, sessionSnapshots]);
 
   const compareHref = useMemo(() => {
     const params = new URLSearchParams({ mode: "ab" });
@@ -174,11 +230,117 @@ export default function HomePage() {
           >
             New Session
           </button>
+          <button
+            type="button"
+            className="cta ctaSecondary"
+            disabled={!activeSession || activeSession.id === DEFAULT_EXPERIMENT_SESSION_ID}
+            onClick={() => {
+              if (!activeSession) {
+                return;
+              }
+
+              const scopedRuns = listRuns(undefined, activeSession.id).length;
+              const confirmed = window.confirm(
+                `Archive "${activeSession.name}"? This hides it from selectors but keeps ${scopedRuns} saved run${scopedRuns === 1 ? "" : "s"}.`
+              );
+
+              if (!confirmed) {
+                return;
+              }
+
+              const archived = archiveExperimentSession(activeSession.id);
+
+              if (!archived) {
+                setSessionMessage("Unable to archive this session.");
+                return;
+              }
+
+              const nextName =
+                listExperimentSessions().find((session) => session.id === archived.nextActiveSessionId)?.name ??
+                "another session";
+              setSessionMessage(`Archived "${activeSession.name}". Active session switched to "${nextName}".`);
+              setRefreshTick((value) => value + 1);
+            }}
+          >
+            Archive Session
+          </button>
         </div>
         <p className="muted">
           Active session: <strong>{activeSession?.name ?? "Not selected"}</strong> ({runCountLabel(runCounts.total)}).
         </p>
+        {activeSession?.id === DEFAULT_EXPERIMENT_SESSION_ID ? (
+          <p className="muted">Default Session cannot be archived.</p>
+        ) : null}
+        {archivedSessions.length ? (
+          <div className={styles.archivedPanel}>
+            <button
+              type="button"
+              className="cta ctaSecondary"
+              onClick={() => setShowArchived((value) => !value)}
+            >
+              {showArchived ? "Hide Archived Sessions" : `Show Archived Sessions (${archivedSessions.length})`}
+            </button>
+            {showArchived ? (
+              <ul className={styles.archivedList}>
+                {archivedSessions.map((session) => (
+                  <li key={session.id} className={styles.archivedItem}>
+                    <span className="muted">{session.name}</span>
+                    <button
+                      type="button"
+                      className="cta ctaSecondary"
+                      onClick={() => {
+                        const restored = restoreExperimentSession(session.id);
+
+                        if (!restored) {
+                          setSessionMessage("Unable to restore archived session.");
+                          return;
+                        }
+
+                        setSessionMessage(`Restored "${restored.name}".`);
+                        setRefreshTick((value) => value + 1);
+                      }}
+                    >
+                      Restore
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
         {sessionMessage ? <p className="muted">{sessionMessage}</p> : null}
+      </section>
+
+      <section className={`panel ${styles.summaryPanel}`}>
+        <h2 className={styles.sectionTitle}>Session Summary</h2>
+        <p className="muted">
+          Best A/B result: <strong>{sessionReport.placement.winner ?? "No winner yet"}</strong>
+        </p>
+        <p className="muted">
+          Best phase result: <strong>{sessionReport.phase.winner ?? "No winner yet"}</strong>
+        </p>
+        <p
+          className={
+            confidenceTrend.direction === "up"
+              ? "ok"
+              : confidenceTrend.direction === "down"
+              ? "warning"
+              : "muted"
+          }
+        >
+          Confidence trend: {confidenceTrend.text}
+        </p>
+        <p className="muted">
+          Current confidence: {sessionReport.overallConfidence.toUpperCase()} ({sessionReport.overallScore}/100)
+        </p>
+        <div className={styles.quickActions}>
+          <Link href="/decision" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Decision Assistant
+          </Link>
+          <Link href={compareHref} className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Compare
+          </Link>
+        </div>
       </section>
 
       <section className="grid two" style={{ marginTop: 12 }}>
