@@ -86,6 +86,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
 3. In Setup:
    - Complete checklist + mic level check on first-time setup
    - Use \"Run Full Setup Again\" only when needed on returning sessions
+   - Optional for A/B or phase: start a guided repeatability session (2x or 3x per side)
    - Open/download test track
 4. In Record:
    - Optional: run 10-second Quick Preflight for level sanity
@@ -95,6 +96,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
 5. In Results:
    - Read curve + smoothness summary
    - Label run (`Placement A/B` or `Phase 0/180`)
+   - If guided session is active, continue to next guided step from Results
 6. In Compare:
    - Choose single-run compare or repeatability mode
    - In repeatability mode, pick two labels with 2-3 runs per side

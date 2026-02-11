@@ -8,6 +8,16 @@ import { analyzeRun } from "@/lib/audio/analyzeRun";
 import { detectBeep } from "@/lib/audio/beepDetect";
 import { startRecorder, type RecorderSession } from "@/lib/audio/recorder";
 import {
+  advanceGuidedSession,
+  clearGuidedSession,
+  describeGuidedStep,
+  getCurrentGuidedStep,
+  getGuidedProgress,
+  getGuidedSessionForMode,
+  isGuidedSessionComplete,
+  type GuidedSessionV1
+} from "@/lib/storage/guidedSession";
+import {
   buildToneSchedule,
   MANUAL_START_TIMEOUT_SEC,
   MAX_RECORD_SECONDS,
@@ -70,6 +80,8 @@ export default function RecordPage() {
   const [preflightSecondsLeft, setPreflightSecondsLeft] = useState(PREFLIGHT_DURATION_SEC);
   const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
   const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
+  const [guidedNotice, setGuidedNotice] = useState<string | null>(null);
 
   const sessionRef = useRef<RecorderSession | null>(null);
   const preflightSessionRef = useRef<RecorderSession | null>(null);
@@ -101,8 +113,17 @@ export default function RecordPage() {
       return;
     }
 
+    setGuidedSession(getGuidedSessionForMode(nextMode));
     setSetupGate("ready");
   }, [router]);
+
+  useEffect(() => {
+    if (setupGate !== "ready") {
+      return;
+    }
+
+    setGuidedSession(getGuidedSessionForMode(mode));
+  }, [mode, setupGate]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -244,6 +265,8 @@ export default function RecordPage() {
         sampleRate: session.sampleRate,
         manualBeepTimeSec: hint
       });
+      const activeGuidedSession = getGuidedSessionForMode(mode);
+      const guidedStep = activeGuidedSession ? getCurrentGuidedStep(activeGuidedSession) : null;
 
       const notes: string[] = [];
       const quality = evaluateRunQuality({
@@ -269,6 +292,10 @@ export default function RecordPage() {
         notes.push("Manual sync start used. Confidence may be lower.");
       }
 
+      if (guidedStep) {
+        notes.push(`Guided session step captured: ${describeGuidedStep(guidedStep)}.`);
+      }
+
       if (quality.blocking) {
         notes.push("Run quality is poor. Re-run this measurement before making placement decisions.");
       }
@@ -285,6 +312,7 @@ export default function RecordPage() {
         sampleRate: session.sampleRate,
         beepDetected: analysis.beepDetected,
         confidence: analysis.confidence,
+        label: guidedStep?.label,
         measurements: analysis.measurements,
         score: analysis.score,
         highlights: analysis.highlights,
@@ -296,6 +324,14 @@ export default function RecordPage() {
       };
 
       saveRun(run);
+      if (guidedStep) {
+        const nextGuided = advanceGuidedSession(run.id);
+        if (nextGuided && nextGuided.mode === mode) {
+          setGuidedSession(nextGuided);
+        } else {
+          setGuidedSession(getGuidedSessionForMode(mode));
+        }
+      }
       router.push(`/results/${run.id}`);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Failed to analyze recording.";
@@ -407,6 +443,9 @@ export default function RecordPage() {
   }
 
   const showManualStart = phase === "recording" && beepTimeSec === null && elapsedSec >= MANUAL_START_TIMEOUT_SEC;
+  const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
+  const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
+  const guidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
 
   if (setupGate === "checking") {
     return (
@@ -427,6 +466,42 @@ export default function RecordPage() {
         <h1>Record</h1>
         <p className="muted">Mode: {modeTitle(mode)}</p>
       </header>
+
+      {guidedSession ? (
+        <section className={`${styles.guidedPanel} panel`}>
+          <h2 className={styles.guidedTitle}>Guided Session Active</h2>
+          <p className={styles.guidedText}>
+            Progress: {guidedProgress?.completed ?? 0}/{guidedProgress?.total ?? 0}
+          </p>
+          {!guidedComplete && guidedStep ? (
+            <p className={styles.guidedText}>Next capture: {describeGuidedStep(guidedStep)}</p>
+          ) : (
+            <p className="ok" style={{ margin: 0 }}>
+              Guided session complete. You can open compare after this run.
+            </p>
+          )}
+          <div className={styles.guidedActions}>
+            <button
+              type="button"
+              className="cta ctaSecondary"
+              onClick={() => {
+                clearGuidedSession();
+                setGuidedSession(null);
+                setGuidedNotice("Guided session cleared.");
+              }}
+              disabled={phase !== "idle"}
+            >
+              Clear Guided Session
+            </button>
+            {guidedComplete ? (
+              <Link href={`/compare?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
+                Open Compare
+              </Link>
+            ) : null}
+          </div>
+          {guidedNotice ? <p className="muted" style={{ margin: 0 }}>{guidedNotice}</p> : null}
+        </section>
+      ) : null}
 
       <section className="panel">
         <p className={styles.status}>{statusMessage}</p>

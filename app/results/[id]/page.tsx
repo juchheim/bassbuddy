@@ -5,6 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ResponseChart } from "@/components/ResponseChart";
 import { SummaryCard } from "@/components/SummaryCard";
+import {
+  describeGuidedStep,
+  getCurrentGuidedStep,
+  getGuidedProgress,
+  getGuidedSessionForMode,
+  isGuidedSessionComplete,
+  type GuidedSessionV1
+} from "@/lib/storage/guidedSession";
 import { deleteRun, getRunById, listRuns, updateRun } from "@/lib/storage/runsStore";
 import type { BassRun } from "@/lib/types";
 import { modeTitle } from "@/lib/utils/mode";
@@ -16,6 +24,7 @@ export default function ResultsPage() {
   const runId = params?.id;
 
   const [run, setRun] = useState<BassRun | null>(null);
+  const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
 
   useEffect(() => {
     if (!runId) {
@@ -24,6 +33,7 @@ export default function ResultsPage() {
 
     const found = getRunById(runId) ?? null;
     setRun(found);
+    setGuidedSession(found ? getGuidedSessionForMode(found.mode) : null);
   }, [runId]);
 
   const runCountInMode = useMemo(() => {
@@ -33,6 +43,9 @@ export default function ResultsPage() {
 
     return listRuns(run.mode).length;
   }, [run]);
+  const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
+  const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
+  const nextGuidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
 
   if (!run) {
     return (
@@ -103,6 +116,24 @@ export default function ResultsPage() {
         </section>
       ) : null}
 
+      {guidedSession ? (
+        <section className="panel" style={{ marginTop: 12 }}>
+          <h2>Guided Session</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Progress: {guidedProgress?.completed ?? 0}/{guidedProgress?.total ?? 0}
+          </p>
+          {!guidedComplete && nextGuidedStep ? (
+            <p className="muted" style={{ marginBottom: 0 }}>
+              Next step: {describeGuidedStep(nextGuidedStep)}
+            </p>
+          ) : (
+            <p className="ok" style={{ marginBottom: 0 }}>
+              Session complete. Open Compare to evaluate median profiles.
+            </p>
+          )}
+        </section>
+      ) : null}
+
       <section className={styles.actions} style={{ marginTop: 12 }}>
         {modeActions.map((label) => (
           <button
@@ -120,9 +151,15 @@ export default function ResultsPage() {
           </button>
         ))}
 
-        <Link href={`/setup?mode=${run.mode}`} className="cta" style={{ textAlign: "center" }}>
-          Run Another Measurement
-        </Link>
+        {guidedSession && !guidedComplete ? (
+          <Link href={`/record?mode=${run.mode}`} className="cta" style={{ textAlign: "center" }}>
+            Continue Guided Session
+          </Link>
+        ) : (
+          <Link href={`/setup?mode=${run.mode}`} className="cta" style={{ textAlign: "center" }}>
+            Run Another Measurement
+          </Link>
+        )}
 
         {runCountInMode >= 2 ? (
           <Link href={`/compare?mode=${run.mode}`} className="cta ctaSecondary" style={{ textAlign: "center" }}>

@@ -5,6 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Checklist, type ChecklistItem } from "@/components/Checklist";
 import { MicMeter, type MicLevelStatus } from "@/components/MicMeter";
+import {
+  clearGuidedSession,
+  describeGuidedStep,
+  getCurrentGuidedStep,
+  getGuidedProgress,
+  getGuidedSessionForMode,
+  isGuidedSessionComplete,
+  startGuidedSession,
+  type GuidedSessionV1
+} from "@/lib/storage/guidedSession";
 import { getUiPrefs, markSetupCompleted } from "@/lib/storage/uiPrefs";
 import type { MicSettingsSnapshot, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
@@ -43,6 +53,8 @@ export default function SetupPage() {
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [setupCompletedAt, setSetupCompletedAt] = useState<string | undefined>(undefined);
   const [forceFullSetup, setForceFullSetup] = useState(false);
+  const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
+  const [guidedNotice, setGuidedNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,9 +66,21 @@ export default function SetupPage() {
     setPrefsLoaded(true);
   }, []);
 
+  useEffect(() => {
+    if (!prefsLoaded) {
+      return;
+    }
+
+    setGuidedSession(getGuidedSessionForMode(mode));
+  }, [mode, prefsLoaded]);
+
   const allChecked = useMemo(() => CHECKLIST_ITEMS.every((item) => Boolean(checks[item.id])), [checks]);
   const needsFullSetup = !setupCompleted || forceFullSetup;
   const canContinue = needsFullSetup ? allChecked && micSnapshot !== null && levelStatus !== "unknown" : true;
+  const guidedSupported = mode === "ab" || mode === "phase";
+  const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
+  const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
+  const nextGuidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
 
   const completedAtDisplay = setupCompletedAt ? new Date(setupCompletedAt).toLocaleString() : "Unknown";
 
@@ -180,6 +204,111 @@ export default function SetupPage() {
             </p>
           ) : null}
         </>
+      ) : null}
+
+      {prefsLoaded && guidedSupported ? (
+        <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
+          <h2>Guided Repeatability Session</h2>
+          <p className={styles.note}>
+            Auto-label and sequence captures as A1/A2/A3 then B1/B2/B3 (or phase equivalents) to reduce compare errors.
+          </p>
+          {needsFullSetup ? (
+            <p className="warning" style={{ margin: 0 }}>
+              Complete setup first to enable guided capture.
+            </p>
+          ) : (
+            <>
+              {guidedSession ? (
+                <>
+                  <p className="muted" style={{ margin: 0 }}>
+                    Progress: {guidedProgress?.completed ?? 0}/{guidedProgress?.total ?? 0}
+                  </p>
+                  {!guidedComplete && nextGuidedStep ? (
+                    <p className="muted" style={{ margin: 0 }}>
+                      Next step: {describeGuidedStep(nextGuidedStep)}
+                    </p>
+                  ) : (
+                    <p className="ok" style={{ margin: 0 }}>
+                      Guided session complete. Open Compare to review median profiles.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  No active guided session in this mode.
+                </p>
+              )}
+              <div className={styles.links}>
+                {guidedSession && !guidedComplete ? (
+                  <button
+                    className="cta"
+                    type="button"
+                    onClick={() => {
+                      router.push(`/record?mode=${mode}`);
+                    }}
+                  >
+                    Resume Guided Session
+                  </button>
+                ) : null}
+                <button
+                  className="cta ctaSecondary"
+                  type="button"
+                  onClick={() => {
+                    if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
+                      return;
+                    }
+
+                    const next = startGuidedSession(mode as "ab" | "phase", 2);
+                    setGuidedSession(next);
+                    setGuidedNotice("Guided session started (2 runs per side).");
+                    router.push(`/record?mode=${mode}`);
+                  }}
+                >
+                  Start Guided Session (2x per side)
+                </button>
+                <button
+                  className="cta ctaSecondary"
+                  type="button"
+                  onClick={() => {
+                    if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
+                      return;
+                    }
+
+                    const next = startGuidedSession(mode as "ab" | "phase", 3);
+                    setGuidedSession(next);
+                    setGuidedNotice("Guided session started (3 runs per side).");
+                    router.push(`/record?mode=${mode}`);
+                  }}
+                >
+                  Start Guided Session (3x per side)
+                </button>
+                {guidedSession ? (
+                  <button
+                    className="cta ctaDanger"
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm("End and clear the current guided session?")) {
+                        return;
+                      }
+
+                      clearGuidedSession();
+                      setGuidedSession(null);
+                      setGuidedNotice("Guided session cleared.");
+                    }}
+                  >
+                    Clear Guided Session
+                  </button>
+                ) : null}
+                {guidedComplete ? (
+                  <Link href={`/compare?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
+                    Open Compare
+                  </Link>
+                ) : null}
+              </div>
+            </>
+          )}
+          {guidedNotice ? <p className="muted" style={{ margin: 0 }}>{guidedNotice}</p> : null}
+        </section>
       ) : null}
     </main>
   );

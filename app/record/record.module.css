@@ -16,6 +16,26 @@
   gap: 8px;
 }
 
+.guidedPanel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.guidedTitle {
+  margin: 0;
+}
+
+.guidedText {
+  margin: 0;
+  color: var(--muted);
+}
+
+.guidedActions {
+  display: grid;
+  gap: 8px;
+}
+
 .preflightPanel {
   border: 1px dashed var(--border);
   border-radius: 12px;
