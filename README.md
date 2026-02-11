@@ -88,6 +88,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - Use \"Run Full Setup Again\" only when needed on returning sessions
    - Open/download test track
 4. In Record:
+   - Optional: run 10-second Quick Preflight for level sanity
    - Tap **Start Listening**
    - Play test track on main system
    - Wait for completion (or manual sync if beep not detected)

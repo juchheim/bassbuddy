@@ -12,6 +12,18 @@ interface RunQualityInput {
   beepToneLevelDb: number;
 }
 
+export interface QuickPreflightInput {
+  peak: number;
+  meanRms: number;
+  micProcessingRisk: MicProcessingRisk;
+}
+
+export interface QuickPreflightAssessment {
+  grade: "pass" | "warn" | "fail";
+  warnings: string[];
+  summary: string;
+}
+
 export interface RepeatabilitySignal {
   meanAbsDiffDb: number;
   maxAbsDiffDb: number;
@@ -103,6 +115,53 @@ export function evaluateRunQuality(input: RunQualityInput): RunQuality {
     tier,
     blocking,
     issues
+  };
+}
+
+export function assessQuickPreflight(input: QuickPreflightInput): QuickPreflightAssessment {
+  const warnings: string[] = [];
+  let severe = false;
+
+  if (input.peak > 0.98) {
+    warnings.push("Clipping risk is high. Lower playback volume before recording.");
+    severe = true;
+  } else if (input.peak > 0.93) {
+    warnings.push("Signal peak is close to clipping.");
+  }
+
+  if (input.meanRms < 0.0025) {
+    warnings.push("Signal is very quiet. Increase playback volume or verify mic placement.");
+    severe = true;
+  } else if (input.meanRms < 0.004) {
+    warnings.push("Signal is a bit quiet. Results may be less stable.");
+  }
+
+  if (input.micProcessingRisk === "high") {
+    warnings.push("Mic processing appears enabled; measurement may be biased.");
+  } else if (input.micProcessingRisk === "unknown") {
+    warnings.push("Mic processing status is unknown on this browser.");
+  }
+
+  if (severe) {
+    return {
+      grade: "fail",
+      warnings,
+      summary: "Preflight failed: fix level issues before recording."
+    };
+  }
+
+  if (warnings.length) {
+    return {
+      grade: "warn",
+      warnings,
+      summary: "Preflight passed with warnings."
+    };
+  }
+
+  return {
+    grade: "pass",
+    warnings: [],
+    summary: "Preflight passed. Levels look good for recording."
   };
 }
 

@@ -15,9 +15,9 @@ import {
 } from "@/lib/constants/testTrack";
 import { saveRun } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
-import type { BassRun, RunMode } from "@/lib/types";
+import type { BassRun, MicProcessingRisk, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
-import { evaluateRunQuality } from "@/lib/utils/runQuality";
+import { assessQuickPreflight, evaluateRunQuality } from "@/lib/utils/runQuality";
 import styles from "@/app/record/record.module.css";
 
 function concatFloat32(chunks: Float32Array[]): Float32Array {
@@ -42,6 +42,17 @@ function getPlatform(): string {
   return nav.userAgentData?.platform ?? nav.platform ?? "unknown";
 }
 
+const PREFLIGHT_DURATION_SEC = 10;
+
+interface PreflightResult {
+  grade: "pass" | "warn" | "fail";
+  summary: string;
+  warnings: string[];
+  peak: number;
+  meanRms: number;
+  processingRisk: MicProcessingRisk;
+}
+
 export default function RecordPage() {
   const router = useRouter();
   const [mode, setMode] = useState<RunMode>("baseline");
@@ -55,13 +66,24 @@ export default function RecordPage() {
   const [peakLive, setPeakLive] = useState(0);
   const [rmsLive, setRmsLive] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [preflightState, setPreflightState] = useState<"idle" | "running" | "done">("idle");
+  const [preflightSecondsLeft, setPreflightSecondsLeft] = useState(PREFLIGHT_DURATION_SEC);
+  const [preflightResult, setPreflightResult] = useState<PreflightResult | null>(null);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
 
   const sessionRef = useRef<RecorderSession | null>(null);
+  const preflightSessionRef = useRef<RecorderSession | null>(null);
   const chunksRef = useRef<Float32Array[]>([]);
   const timerRef = useRef<number | null>(null);
+  const preflightTimerRef = useRef<number | null>(null);
   const startedAtRef = useRef(0);
+  const preflightStartedAtRef = useRef(0);
   const stoppingRef = useRef(false);
+  const preflightStoppingRef = useRef(false);
   const lastScanSecRef = useRef(0);
+  const preflightRmsSumRef = useRef(0);
+  const preflightRmsCountRef = useRef(0);
+  const preflightPeakRef = useRef(0);
 
   const beepTimeRef = useRef<number | null>(beepTimeSec);
   beepTimeRef.current = beepTimeSec;
@@ -88,6 +110,111 @@ export default function RecordPage() {
       timerRef.current = null;
     }
   }, []);
+
+  const stopPreflightTimer = useCallback(() => {
+    if (preflightTimerRef.current !== null) {
+      window.clearInterval(preflightTimerRef.current);
+      preflightTimerRef.current = null;
+    }
+  }, []);
+
+  const finishQuickPreflight = useCallback(async () => {
+    if (preflightStoppingRef.current) {
+      return;
+    }
+
+    preflightStoppingRef.current = true;
+    stopPreflightTimer();
+
+    const session = preflightSessionRef.current;
+    if (!session) {
+      setPreflightState("idle");
+      setPreflightSecondsLeft(PREFLIGHT_DURATION_SEC);
+      preflightStoppingRef.current = false;
+      return;
+    }
+
+    try {
+      await session.stop();
+      preflightSessionRef.current = null;
+
+      const meanRms =
+        preflightRmsCountRef.current > 0 ? preflightRmsSumRef.current / preflightRmsCountRef.current : 0;
+      const peak = preflightPeakRef.current;
+
+      const assessment = assessQuickPreflight({
+        peak,
+        meanRms,
+        micProcessingRisk: session.micSettings.processingRisk
+      });
+
+      setPreflightResult({
+        ...assessment,
+        peak,
+        meanRms,
+        processingRisk: session.micSettings.processingRisk
+      });
+      setPreflightState("done");
+      setPreflightSecondsLeft(0);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Quick preflight failed.";
+      setPreflightError(message);
+      setPreflightState("idle");
+      setPreflightSecondsLeft(PREFLIGHT_DURATION_SEC);
+    } finally {
+      preflightStoppingRef.current = false;
+    }
+  }, [stopPreflightTimer]);
+
+  const startQuickPreflight = useCallback(async () => {
+    if (phase !== "idle" || preflightState === "running") {
+      return;
+    }
+
+    setError(null);
+    setPreflightError(null);
+    setPreflightResult(null);
+    setPreflightState("running");
+    setPreflightSecondsLeft(PREFLIGHT_DURATION_SEC);
+    preflightRmsSumRef.current = 0;
+    preflightRmsCountRef.current = 0;
+    preflightPeakRef.current = 0;
+    preflightStoppingRef.current = false;
+    preflightStartedAtRef.current = performance.now();
+
+    try {
+      const session = await startRecorder({
+        onChunk: (_chunk, meta) => {
+          preflightPeakRef.current = Math.max(preflightPeakRef.current, meta.peak);
+          preflightRmsSumRef.current += meta.rms;
+          preflightRmsCountRef.current += 1;
+
+          const elapsedSec = (performance.now() - preflightStartedAtRef.current) / 1000;
+          setPreflightSecondsLeft(Math.max(0, PREFLIGHT_DURATION_SEC - elapsedSec));
+
+          if (elapsedSec >= PREFLIGHT_DURATION_SEC) {
+            void finishQuickPreflight();
+          }
+        }
+      });
+
+      preflightSessionRef.current = session;
+
+      preflightTimerRef.current = window.setInterval(() => {
+        const elapsedSec = (performance.now() - preflightStartedAtRef.current) / 1000;
+        setPreflightSecondsLeft(Math.max(0, PREFLIGHT_DURATION_SEC - elapsedSec));
+
+        if (elapsedSec >= PREFLIGHT_DURATION_SEC) {
+          void finishQuickPreflight();
+        }
+      }, 150);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Unable to run quick preflight.";
+      setPreflightError(message);
+      setPreflightState("idle");
+      setPreflightSecondsLeft(PREFLIGHT_DURATION_SEC);
+    }
+  }, [finishQuickPreflight, phase, preflightState]);
 
   const stopAndAnalyze = useCallback(async () => {
     if (stoppingRef.current) {
@@ -180,6 +307,11 @@ export default function RecordPage() {
   }, [mode, peakLive, rmsLive, router, stopTimer, usedManualStart]);
 
   const beginRecording = useCallback(async () => {
+    if (preflightState === "running") {
+      setError("Quick preflight is still running. Wait for it to finish before starting measurement.");
+      return;
+    }
+
     setError(null);
     setPhase("recording");
     setElapsedSec(0);
@@ -233,17 +365,22 @@ export default function RecordPage() {
       setError(message);
       setPhase("idle");
     }
-  }, [stopAndAnalyze]);
+  }, [preflightState, stopAndAnalyze]);
 
   useEffect(() => {
     return () => {
       stopTimer();
+      stopPreflightTimer();
       if (sessionRef.current) {
         void sessionRef.current.stop();
         sessionRef.current = null;
       }
+      if (preflightSessionRef.current) {
+        void preflightSessionRef.current.stop();
+        preflightSessionRef.current = null;
+      }
     };
-  }, [stopTimer]);
+  }, [stopPreflightTimer, stopTimer]);
 
   const schedule = useMemo(() => {
     if (beepTimeSec === null) {
@@ -304,7 +441,43 @@ export default function RecordPage() {
 
       <section className={styles.controls} style={{ marginTop: 12 }}>
         {phase === "idle" ? (
-          <button className="cta" type="button" onClick={() => void beginRecording()}>
+          <div className={styles.preflightPanel}>
+            <p className={styles.preflightTitle}>Quick Preflight (optional, 10s)</p>
+            <p className={styles.preflightText}>
+              Runs a fast mic-level sanity check before measurement. Helpful when room/device conditions changed.
+            </p>
+            <button
+              className="cta ctaSecondary"
+              type="button"
+              onClick={() => void startQuickPreflight()}
+              disabled={preflightState === "running"}
+            >
+              {preflightState === "running"
+                ? `Running Preflight... ${Math.ceil(preflightSecondsLeft)}s`
+                : "Run Quick Preflight"}
+            </button>
+            {preflightResult ? (
+              <div className={styles.preflightSummary}>
+                <p className={preflightResult.grade === "pass" ? "ok" : preflightResult.grade === "fail" ? "error" : "warning"}>
+                  {preflightResult.summary}
+                </p>
+                <p className="muted" style={{ margin: 0 }}>
+                  Peak {(preflightResult.peak * 100).toFixed(1)}% | RMS {(preflightResult.meanRms * 100).toFixed(2)}% | Mic
+                  processing {preflightResult.processingRisk}
+                </p>
+                {preflightResult.warnings.map((warning) => (
+                  <p className="warning" key={warning} style={{ margin: 0 }}>
+                    {warning}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+            {preflightError ? <p className="error" style={{ margin: 0 }}>{preflightError}</p> : null}
+          </div>
+        ) : null}
+
+        {phase === "idle" ? (
+          <button className="cta" type="button" onClick={() => void beginRecording()} disabled={preflightState === "running"}>
             Start Listening
           </button>
         ) : null}

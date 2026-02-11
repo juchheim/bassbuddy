@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BassRun } from "@/lib/types";
-import { evaluateCompareReadiness, evaluateRunQuality } from "@/lib/utils/runQuality";
+import { assessQuickPreflight, evaluateCompareReadiness, evaluateRunQuality } from "@/lib/utils/runQuality";
 
 function makeRun(overrides: Partial<BassRun> = {}): BassRun {
   return {
@@ -115,5 +115,41 @@ describe("evaluateCompareReadiness", () => {
     expect(readiness.canDeclareWinner).toBe(true);
     expect(readiness.repeatability).not.toBeNull();
     expect(readiness.repeatability?.verdict).not.toBe("low");
+  });
+});
+
+describe("assessQuickPreflight", () => {
+  it("passes clean levels", () => {
+    const assessment = assessQuickPreflight({
+      peak: 0.72,
+      meanRms: 0.008,
+      micProcessingRisk: "low"
+    });
+
+    expect(assessment.grade).toBe("pass");
+    expect(assessment.warnings).toHaveLength(0);
+  });
+
+  it("fails clipping and very quiet input", () => {
+    const assessment = assessQuickPreflight({
+      peak: 0.995,
+      meanRms: 0.0018,
+      micProcessingRisk: "low"
+    });
+
+    expect(assessment.grade).toBe("fail");
+    expect(assessment.warnings.some((entry) => entry.includes("Clipping"))).toBe(true);
+    expect(assessment.warnings.some((entry) => entry.includes("very quiet"))).toBe(true);
+  });
+
+  it("warns when mic processing risk is high", () => {
+    const assessment = assessQuickPreflight({
+      peak: 0.68,
+      meanRms: 0.006,
+      micProcessingRisk: "high"
+    });
+
+    expect(assessment.grade).toBe("warn");
+    expect(assessment.warnings.some((entry) => entry.includes("processing"))).toBe(true);
   });
 });
