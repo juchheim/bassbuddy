@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ResponseChart } from "@/components/ResponseChart";
 import { SummaryCard } from "@/components/SummaryCard";
+import { MULTI_SEAT_LABELS } from "@/lib/constants/multiSeat";
 import {
   describeGuidedStep,
   getCurrentGuidedStep,
@@ -64,6 +65,8 @@ export default function ResultsPage() {
       ? ["Placement A", "Placement B"]
       : run.mode === "phase"
       ? ["Phase 0", "Phase 180"]
+      : run.mode === "multiseat"
+      ? MULTI_SEAT_LABELS.map((entry) => entry.label)
       : [];
 
   return (

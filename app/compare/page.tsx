@@ -7,7 +7,9 @@ import { ResponseChart } from "@/components/ResponseChart";
 import { RunPicker } from "@/components/RunPicker";
 import { deleteRun, listRuns } from "@/lib/storage/runsStore";
 import type { BassRun, RunMode } from "@/lib/types";
+import { MULTI_SEAT_ORDER, seatDisplayName } from "@/lib/constants/multiSeat";
 import { compareRuns } from "@/lib/utils/compareRuns";
+import { buildMultiSeatRunSet, evaluateMultiSeatDecision } from "@/lib/utils/multiSeat";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
 import {
   buildRepeatabilityProfile,
@@ -77,6 +79,11 @@ export default function ComparePage() {
     const params = new URLSearchParams(window.location.search);
     const nextMode = normalizeMode(params.get("mode"));
     setMode(nextMode);
+    if (nextMode === "multiseat") {
+      setStrategy("single");
+      return;
+    }
+
     setStrategy(isRepeatabilityModeRecommended(nextMode) ? "repeatability" : "single");
   }, []);
 
@@ -89,6 +96,17 @@ export default function ComparePage() {
     setSelectedA(first);
     setSelectedB(second);
   }, [mode]);
+
+  useEffect(() => {
+    if (mode === "multiseat") {
+      setStrategy("single");
+      return;
+    }
+
+    if (!isRepeatabilityModeRecommended(mode) && strategy === "repeatability") {
+      setStrategy("single");
+    }
+  }, [mode, strategy]);
 
   const runA = useMemo(() => runs.find((run) => run.id === selectedA), [runs, selectedA]);
   const runB = useMemo(() => runs.find((run) => run.id === selectedB), [runs, selectedB]);
@@ -121,8 +139,34 @@ export default function ComparePage() {
     return group ? buildRepeatabilityProfile(group.label, group.runs, 3) : null;
   }, [groups, selectedGroupB, strategy]);
 
-  const activeRunA = strategy === "repeatability" ? profileA?.aggregateRun : runA;
-  const activeRunB = strategy === "repeatability" ? profileB?.aggregateRun : runB;
+  const multiSeatDecision = useMemo(() => {
+    if (mode !== "multiseat") {
+      return null;
+    }
+
+    return evaluateMultiSeatDecision(runs);
+  }, [mode, runs]);
+
+  const multiSeatRunSet = useMemo(() => {
+    if (mode !== "multiseat") {
+      return null;
+    }
+
+    return buildMultiSeatRunSet(runs);
+  }, [mode, runs]);
+
+  const activeRunA =
+    mode === "multiseat"
+      ? multiSeatDecision?.placementA.aggregateRun
+      : strategy === "repeatability"
+      ? profileA?.aggregateRun
+      : runA;
+  const activeRunB =
+    mode === "multiseat"
+      ? multiSeatDecision?.placementB.aggregateRun
+      : strategy === "repeatability"
+      ? profileB?.aggregateRun
+      : runB;
 
   const recommendation =
     activeRunA && activeRunB && activeRunA.id !== activeRunB.id ? recommendationText(activeRunA, activeRunB) : null;
@@ -161,8 +205,15 @@ export default function ComparePage() {
   }
 
   const canDeclareWinner =
-    Boolean(compareReadiness?.canDeclareWinner) &&
-    (strategy !== "repeatability" || repeatabilityBlockers.length === 0);
+    mode === "multiseat"
+      ? Boolean(compareReadiness?.canDeclareWinner) && Boolean(multiSeatDecision?.canDeclareWinner)
+      : Boolean(compareReadiness?.canDeclareWinner) &&
+        (strategy !== "repeatability" || repeatabilityBlockers.length === 0);
+
+  const showComparisonSections =
+    mode === "multiseat"
+      ? Boolean(multiSeatDecision)
+      : Boolean(activeRunA && activeRunB && activeRunA.id !== activeRunB.id);
 
   return (
     <main className="pageContainer">
@@ -177,20 +228,53 @@ export default function ComparePage() {
           <select value={mode} onChange={(event) => setMode(normalizeMode(event.target.value))}>
             <option value="ab">Compare Two Placements (A/B)</option>
             <option value="phase">Phase Test (0 vs 180)</option>
+            <option value="multiseat">Multi-Seat Compromise (A/B)</option>
             <option value="baseline">Quick Baseline</option>
           </select>
         </label>
         <p className="muted">Current mode: {modeTitle(mode)}</p>
 
-        <label>
-          Compare strategy
-          <select value={strategy} onChange={(event) => setStrategy(event.target.value as CompareStrategy)}>
-            <option value="single">Single-run compare</option>
-            <option value="repeatability">Repeatability mode (2-3 runs per side)</option>
-          </select>
-        </label>
+        {mode !== "multiseat" ? (
+          <label>
+            Compare strategy
+            <select value={strategy} onChange={(event) => setStrategy(event.target.value as CompareStrategy)}>
+              <option value="single">Single-run compare</option>
+              <option value="repeatability">Repeatability mode (2-3 runs per side)</option>
+            </select>
+          </label>
+        ) : (
+          <p className="muted" style={{ margin: 0 }}>
+            Multi-seat mode compares A vs B compromise across Center/Left/Right seat captures.
+          </p>
+        )}
 
-        {strategy === "repeatability" ? (
+        {mode === "multiseat" ? (
+          <>
+            <p className="muted" style={{ margin: 0 }}>
+              Required labels: Placement A/B for Center, Left, and Right seats.
+            </p>
+            {multiSeatRunSet ? (
+              <div className={styles.seatGrid}>
+                {MULTI_SEAT_ORDER.map((seat) => {
+                  const runASeat = multiSeatRunSet.placementA[seat];
+                  const runBSeat = multiSeatRunSet.placementB[seat];
+
+                  return (
+                    <div key={seat} className={styles.seatCard}>
+                      <p className={styles.seatTitle}>{seatDisplayName(seat)}</p>
+                      <p className="muted" style={{ margin: 0 }}>
+                        A: {runASeat ? `score ${runASeat.score.toFixed(1)}` : "missing"}
+                      </p>
+                      <p className="muted" style={{ margin: 0 }}>
+                        B: {runBSeat ? `score ${runBSeat.score.toFixed(1)}` : "missing"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </>
+        ) : strategy === "repeatability" ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
               Repeatability mode compares median curves from each group and only declares a winner if advantage exceeds
@@ -301,30 +385,50 @@ export default function ComparePage() {
         {notice ? <p className="muted" style={{ margin: 0 }}>{notice}</p> : null}
       </section>
 
-      {activeRunA && activeRunB && activeRunA.id !== activeRunB.id ? (
+      {showComparisonSections ? (
         <>
-          {compareReadiness ? (
+          {compareReadiness || multiSeatDecision ? (
             <section className={`panel ${styles.qualityPanel}`} style={{ marginTop: 12 }}>
               <h2>Measurement Quality Gate</h2>
-              {compareReadiness.blockers.length ? (
+              {compareReadiness?.blockers.length ? (
                 compareReadiness.blockers.map((blocker) => (
                   <p key={blocker} className="error" style={{ margin: 0 }}>
                     {blocker}
                   </p>
                 ))
-              ) : (
+              ) : compareReadiness ? (
                 <p className="ok" style={{ margin: 0 }}>
                   Quality gate passed.
                 </p>
-              )}
+              ) : null}
 
-              {compareReadiness.warnings.map((warning) => (
+              {compareReadiness?.warnings.map((warning) => (
                 <p key={warning} className="warning" style={{ margin: 0 }}>
                   {warning}
                 </p>
               ))}
 
-              {strategy === "repeatability" ? (
+              {mode === "multiseat" ? (
+                <>
+                  {multiSeatDecision?.blockers.map((blocker) => (
+                    <p key={blocker} className="error" style={{ margin: 0 }}>
+                      {blocker}
+                    </p>
+                  ))}
+                  {multiSeatDecision?.warnings.map((warning) => (
+                    <p key={warning} className="warning" style={{ margin: 0 }}>
+                      {warning}
+                    </p>
+                  ))}
+                  {multiSeatDecision ? (
+                    <p className="muted" style={{ marginBottom: 0 }}>
+                      Compromise scores: A {multiSeatDecision.placementA.compromiseScore.toFixed(1)} vs B{" "}
+                      {multiSeatDecision.placementB.compromiseScore.toFixed(1)}. Decision floor:{" "}
+                      {multiSeatDecision.scoreFloor.toFixed(1)}. Delta: {multiSeatDecision.scoreDelta.toFixed(1)}.
+                    </p>
+                  ) : null}
+                </>
+              ) : strategy === "repeatability" ? (
                 <>
                   {repeatabilityBlockers.map((blocker) => (
                     <p key={blocker} className="warning" style={{ margin: 0 }}>
@@ -341,49 +445,66 @@ export default function ComparePage() {
                     </p>
                   ) : null}
                 </>
-              ) : compareReadiness.repeatability ? (
+              ) : compareReadiness?.repeatability ? (
                 <p className="muted" style={{ marginBottom: 0 }}>
-                  Repeatability signal: {compareReadiness.repeatability.verdict} (mean difference {" "}
-                  {compareReadiness.repeatability.meanAbsDiffDb.toFixed(2)} dB, max {" "}
+                  Repeatability signal: {compareReadiness.repeatability.verdict} (mean difference{" "}
+                  {compareReadiness.repeatability.meanAbsDiffDb.toFixed(2)} dB, max{" "}
                   {compareReadiness.repeatability.maxAbsDiffDb.toFixed(2)} dB).
                 </p>
               ) : null}
             </section>
           ) : null}
 
-          <section className="panel" style={{ marginTop: 12 }}>
-            <ResponseChart
-              series={[
-                {
-                  id: activeRunA.id,
-                  name:
-                    strategy === "repeatability" && profileA
-                      ? `${profileA.label} median (n=${profileA.sourceRuns.length})`
-                      : activeRunA.label ?? "Run A",
-                  color: "var(--series-a)",
-                  measurements: activeRunA.measurements
-                },
-                {
-                  id: activeRunB.id,
-                  name:
-                    strategy === "repeatability" && profileB
-                      ? `${profileB.label} median (n=${profileB.sourceRuns.length})`
-                      : activeRunB.label ?? "Run B",
-                  color: "var(--series-b)",
-                  measurements: activeRunB.measurements
-                }
-              ]}
-            />
-          </section>
+          {activeRunA && activeRunB && activeRunA.id !== activeRunB.id ? (
+            <section className="panel" style={{ marginTop: 12 }}>
+              <ResponseChart
+                series={[
+                  {
+                    id: activeRunA.id,
+                    name:
+                      strategy === "repeatability" && profileA
+                        ? `${profileA.label} median (n=${profileA.sourceRuns.length})`
+                        : activeRunA.label ?? "Run A",
+                    color: "var(--series-a)",
+                    measurements: activeRunA.measurements
+                  },
+                  {
+                    id: activeRunB.id,
+                    name:
+                      strategy === "repeatability" && profileB
+                        ? `${profileB.label} median (n=${profileB.sourceRuns.length})`
+                        : activeRunB.label ?? "Run B",
+                    color: "var(--series-b)",
+                    measurements: activeRunB.measurements
+                  }
+                ]}
+              />
+            </section>
+          ) : null}
 
-          {recommendation ? (
+          {recommendation || mode === "multiseat" ? (
             <section className="panel" style={{ marginTop: 12 }}>
               <h2>Recommendation</h2>
               {canDeclareWinner ? (
-                <>
-                  <p className={styles.recommendation}>{recommendation.headline}</p>
-                  <p className="muted">{recommendation.detail}</p>
-                </>
+                mode === "multiseat" && multiSeatDecision ? (
+                  <>
+                    <p className={styles.recommendation}>
+                      {multiSeatDecision.winner === "tie"
+                        ? "Tie: neither placement clearly beats the compromise floor."
+                        : `Placement ${multiSeatDecision.winner} wins compromise across seats.`}
+                    </p>
+                    <p className="muted">{multiSeatDecision.reason}</p>
+                  </>
+                ) : recommendation ? (
+                  <>
+                    <p className={styles.recommendation}>{recommendation.headline}</p>
+                    <p className="muted">{recommendation.detail}</p>
+                  </>
+                ) : (
+                  <p className="warning" style={{ marginBottom: 0 }}>
+                    Not enough run quality to declare a winner yet.
+                  </p>
+                )
               ) : (
                 <p className="warning" style={{ marginBottom: 0 }}>
                   Winner recommendation withheld until quality and repeatability gates pass.

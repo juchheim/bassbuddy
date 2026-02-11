@@ -1,6 +1,7 @@
 import type { RunMode } from "@/lib/types";
+import { MULTI_SEAT_LABELS } from "@/lib/constants/multiSeat";
 
-export type GuidedMode = "ab" | "phase";
+export type GuidedMode = "ab" | "phase" | "multiseat";
 
 export interface GuidedStep {
   stepIndex: number;
@@ -39,10 +40,20 @@ function clampRepeats(repeatsPerSide: number): number {
 }
 
 function isGuidedMode(mode: RunMode): mode is GuidedMode {
-  return mode === "ab" || mode === "phase";
+  return mode === "ab" || mode === "phase" || mode === "multiseat";
 }
 
 export function createGuidedSteps(mode: GuidedMode, repeatsPerSide: number): GuidedStep[] {
+  if (mode === "multiseat") {
+    return MULTI_SEAT_LABELS.map((entry, stepIndex) => ({
+      stepIndex,
+      side: entry.placement,
+      repeatIndex: 1,
+      repeatsPerSide: 1,
+      label: entry.label
+    }));
+  }
+
   const repeats = clampRepeats(repeatsPerSide);
 
   const labels =
@@ -86,7 +97,7 @@ function parseGuidedSession(raw: unknown): GuidedSessionV1 | null {
 
   if (
     parsed.version !== GUIDED_SESSION_VERSION ||
-    (parsed.mode !== "ab" && parsed.mode !== "phase") ||
+    (parsed.mode !== "ab" && parsed.mode !== "phase" && parsed.mode !== "multiseat") ||
     typeof parsed.id !== "string" ||
     typeof parsed.currentStepIndex !== "number" ||
     !Array.isArray(parsed.steps) ||
@@ -98,8 +109,8 @@ function parseGuidedSession(raw: unknown): GuidedSessionV1 | null {
   const steps = parsed.steps
     .map((step, stepIndex) => {
       if (!step || typeof step !== "object") {
-        return null;
-      }
+      return null;
+    }
 
       const candidate = step as Partial<GuidedStep>;
 
@@ -130,7 +141,7 @@ function parseGuidedSession(raw: unknown): GuidedSessionV1 | null {
     version: GUIDED_SESSION_VERSION,
     id: parsed.id,
     mode: parsed.mode,
-    repeatsPerSide: clampRepeats(parsed.repeatsPerSide ?? 3),
+    repeatsPerSide: parsed.mode === "multiseat" ? 1 : clampRepeats(parsed.repeatsPerSide ?? 3),
     createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : new Date().toISOString(),
     updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
     currentStepIndex: Math.max(0, Math.floor(parsed.currentStepIndex)),
@@ -188,7 +199,7 @@ export function getGuidedSessionForMode(mode: RunMode): GuidedSessionV1 | null {
 }
 
 export function startGuidedSession(mode: GuidedMode, repeatsPerSide = 3): GuidedSessionV1 {
-  const repeats = clampRepeats(repeatsPerSide);
+  const repeats = mode === "multiseat" ? 1 : clampRepeats(repeatsPerSide);
   const now = new Date().toISOString();
 
   const session: GuidedSessionV1 = {

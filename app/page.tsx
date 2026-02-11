@@ -5,9 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { ModeCard } from "@/components/ModeCard";
 import { ResetRunsButton } from "@/components/ResetRunsButton";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
+import type { RunMode } from "@/lib/types";
 import styles from "@/app/page.module.css";
 
-function startHref(mode: "baseline" | "ab" | "phase", setupCompleted: boolean): string {
+function startHref(mode: RunMode, setupCompleted: boolean): string {
   if (setupCompleted) {
     return `/record?mode=${mode}`;
   }
@@ -74,6 +75,12 @@ export default function HomePage() {
           description="Measure with phase switch at 0° and 180° and choose the better setting."
           href={startHref("phase", setupCompleted)}
           cta={setupCompleted ? "Start Phase Test" : "Open Setup"}
+        />
+        <ModeCard
+          title="Multi-Seat Compromise (A/B)"
+          description="Measure center/left/right seats for A and B, then pick the better compromise."
+          href={startHref("multiseat", setupCompleted)}
+          cta={setupCompleted ? "Start Multi-Seat" : "Open Setup"}
         />
         <ModeCard
           title="Review Saved Runs"

@@ -77,7 +77,7 @@ export default function SetupPage() {
   const allChecked = useMemo(() => CHECKLIST_ITEMS.every((item) => Boolean(checks[item.id])), [checks]);
   const needsFullSetup = !setupCompleted || forceFullSetup;
   const canContinue = needsFullSetup ? allChecked && micSnapshot !== null && levelStatus !== "unknown" : true;
-  const guidedSupported = mode === "ab" || mode === "phase";
+  const guidedSupported = mode === "ab" || mode === "phase" || mode === "multiseat";
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
   const nextGuidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
@@ -210,7 +210,9 @@ export default function SetupPage() {
         <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
           <h2>Guided Repeatability Session</h2>
           <p className={styles.note}>
-            Auto-label and sequence captures as A1/A2/A3 then B1/B2/B3 (or phase equivalents) to reduce compare errors.
+            {mode === "multiseat"
+              ? "Auto-label and sequence captures as Placement A/B across Center, Left, and Right seats."
+              : "Auto-label and sequence captures as A1/A2/A3 then B1/B2/B3 (or phase equivalents) to reduce compare errors."}
           </p>
           {needsFullSetup ? (
             <p className="warning" style={{ margin: 0 }}>
@@ -258,30 +260,36 @@ export default function SetupPage() {
                       return;
                     }
 
-                    const next = startGuidedSession(mode as "ab" | "phase", 2);
+                    const next = startGuidedSession(mode as "ab" | "phase" | "multiseat", mode === "multiseat" ? 1 : 2);
                     setGuidedSession(next);
-                    setGuidedNotice("Guided session started (2 runs per side).");
+                    setGuidedNotice(
+                      mode === "multiseat"
+                        ? "Guided multi-seat session started (A/B across center/left/right)."
+                        : "Guided session started (2 runs per side)."
+                    );
                     router.push(`/record?mode=${mode}`);
                   }}
                 >
-                  Start Guided Session (2x per side)
+                  {mode === "multiseat" ? "Start Guided Multi-Seat Session" : "Start Guided Session (2x per side)"}
                 </button>
-                <button
-                  className="cta ctaSecondary"
-                  type="button"
-                  onClick={() => {
-                    if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
-                      return;
-                    }
+                {mode !== "multiseat" ? (
+                  <button
+                    className="cta ctaSecondary"
+                    type="button"
+                    onClick={() => {
+                      if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
+                        return;
+                      }
 
-                    const next = startGuidedSession(mode as "ab" | "phase", 3);
-                    setGuidedSession(next);
-                    setGuidedNotice("Guided session started (3 runs per side).");
-                    router.push(`/record?mode=${mode}`);
-                  }}
-                >
-                  Start Guided Session (3x per side)
-                </button>
+                      const next = startGuidedSession(mode as "ab" | "phase", 3);
+                      setGuidedSession(next);
+                      setGuidedNotice("Guided session started (3 runs per side).");
+                      router.push(`/record?mode=${mode}`);
+                    }}
+                  >
+                    Start Guided Session (3x per side)
+                  </button>
+                ) : null}
                 {guidedSession ? (
                   <button
                     className="cta ctaDanger"

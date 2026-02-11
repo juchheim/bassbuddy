@@ -6,6 +6,7 @@ This MVP is intentionally relative and decision-focused:
 - Measure one run quickly.
 - Compare A vs B placements.
 - Compare phase 0 vs 180.
+- Compare A vs B as a compromise across multiple seats.
 - Get a clear winner with plain-English guidance.
 
 ## What This MVP Does
@@ -16,6 +17,7 @@ This MVP is intentionally relative and decision-focused:
 - Computes smoothness score, worst peak/dip, deep-dip and big-peak counts.
 - Scores each run for measurement quality and flags poor captures.
 - Supports repeatability compare mode (2-3 runs per side, median-profile compare with noise-floor gating).
+- Supports multi-seat compromise mode (Center/Left/Right seat weighting for A vs B).
 - Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
 
 ## What It Does Not Do
@@ -83,6 +85,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - Baseline
    - A/B placement compare
    - Phase compare
+   - Multi-seat compromise compare
 3. In Setup:
    - Complete checklist + mic level check on first-time setup
    - Use \"Run Full Setup Again\" only when needed on returning sessions
@@ -100,6 +103,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
 6. In Compare:
    - Choose single-run compare or repeatability mode
    - In repeatability mode, pick two labels with 2-3 runs per side
+   - In multi-seat mode, capture A/B for Center/Left/Right and compare compromise score
    - Review overlay + quality/repeatability gates + winner recommendation
 
 ## Practical Use Notes

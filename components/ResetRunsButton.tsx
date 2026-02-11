@@ -24,6 +24,10 @@ function scopeLabel(mode?: RunMode): string {
     return "all phase-test runs";
   }
 
+  if (mode === "multiseat") {
+    return "all multi-seat runs";
+  }
+
   return "all baseline runs";
 }
 

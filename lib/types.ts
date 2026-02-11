@@ -1,4 +1,4 @@
-export type RunMode = "baseline" | "ab" | "phase";
+export type RunMode = "baseline" | "ab" | "phase" | "multiseat";
 export type Confidence = "high" | "medium" | "low";
 
 export interface FrequencyMeasurement {

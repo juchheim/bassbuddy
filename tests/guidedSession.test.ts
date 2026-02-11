@@ -47,6 +47,17 @@ describe("createGuidedSteps", () => {
     expect(createGuidedSteps("ab", 1)).toHaveLength(4);
     expect(createGuidedSteps("ab", 99)).toHaveLength(6);
   });
+
+  it("creates fixed six-step sequence for multi-seat mode", () => {
+    const steps = createGuidedSteps("multiseat", 3);
+
+    expect(steps).toHaveLength(6);
+    expect(steps[0]?.label).toContain("Placement A");
+    expect(steps[0]?.label).toContain("Center Seat");
+    expect(steps[5]?.label).toContain("Placement B");
+    expect(steps[5]?.label).toContain("Right Seat");
+    expect(steps.every((step) => step.repeatIndex === 1)).toBe(true);
+  });
 });
 
 describe("guided session helpers", () => {
