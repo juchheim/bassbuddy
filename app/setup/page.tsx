@@ -16,6 +16,7 @@ import {
   type GuidedSessionV1
 } from "@/lib/storage/guidedSession";
 import { getUiPrefs, markSetupCompleted } from "@/lib/storage/uiPrefs";
+import { clampScoutCandidates, SCOUT_DEFAULT_CANDIDATES } from "@/lib/constants/scout";
 import type { MicSettingsSnapshot, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
 import styles from "@/app/setup/setup.module.css";
@@ -55,6 +56,7 @@ export default function SetupPage() {
   const [forceFullSetup, setForceFullSetup] = useState(false);
   const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
   const [guidedNotice, setGuidedNotice] = useState<string | null>(null);
+  const [scoutCandidateCount, setScoutCandidateCount] = useState(SCOUT_DEFAULT_CANDIDATES);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -74,10 +76,16 @@ export default function SetupPage() {
     setGuidedSession(getGuidedSessionForMode(mode));
   }, [mode, prefsLoaded]);
 
+  useEffect(() => {
+    if (guidedSession?.mode === "scout") {
+      setScoutCandidateCount(clampScoutCandidates(guidedSession.repeatsPerSide));
+    }
+  }, [guidedSession]);
+
   const allChecked = useMemo(() => CHECKLIST_ITEMS.every((item) => Boolean(checks[item.id])), [checks]);
   const needsFullSetup = !setupCompleted || forceFullSetup;
   const canContinue = needsFullSetup ? allChecked && micSnapshot !== null && levelStatus !== "unknown" : true;
-  const guidedSupported = mode === "ab" || mode === "phase" || mode === "multiseat";
+  const guidedSupported = mode === "ab" || mode === "phase" || mode === "multiseat" || mode === "scout";
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
   const nextGuidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
@@ -208,10 +216,12 @@ export default function SetupPage() {
 
       {prefsLoaded && guidedSupported ? (
         <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
-          <h2>Guided Repeatability Session</h2>
+          <h2>{mode === "scout" ? "Placement Scout Session" : "Guided Repeatability Session"}</h2>
           <p className={styles.note}>
             {mode === "multiseat"
               ? "Auto-label and sequence captures as Placement A/B across Center, Left, and Right seats."
+              : mode === "scout"
+              ? "Capture 4-8 candidate sub locations in one guided pass. Compare mode will auto-rank and promote top picks."
               : "Auto-label and sequence captures as A1/A2/A3 then B1/B2/B3 (or phase equivalents) to reduce compare errors."}
           </p>
           {needsFullSetup ? (
@@ -231,7 +241,7 @@ export default function SetupPage() {
                     </p>
                   ) : (
                     <p className="ok" style={{ margin: 0 }}>
-                      Guided session complete. Open Compare to review median profiles.
+                      Guided session complete. Open Compare to review results.
                     </p>
                   )}
                 </>
@@ -252,44 +262,80 @@ export default function SetupPage() {
                     Resume Guided Session
                   </button>
                 ) : null}
-                <button
-                  className="cta ctaSecondary"
-                  type="button"
-                  onClick={() => {
-                    if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
-                      return;
-                    }
+                {mode === "scout" ? (
+                  <>
+                    <label>
+                      Candidate count (4-8)
+                      <select
+                        value={scoutCandidateCount}
+                        onChange={(event) => setScoutCandidateCount(clampScoutCandidates(Number(event.target.value)))}
+                      >
+                        <option value={4}>4 candidates</option>
+                        <option value={5}>5 candidates</option>
+                        <option value={6}>6 candidates</option>
+                        <option value={7}>7 candidates</option>
+                        <option value={8}>8 candidates</option>
+                      </select>
+                    </label>
+                    <button
+                      className="cta ctaSecondary"
+                      type="button"
+                      onClick={() => {
+                        if (guidedSession && !window.confirm("Start a new scout session and replace current progress?")) {
+                          return;
+                        }
 
-                    const next = startGuidedSession(mode as "ab" | "phase" | "multiseat", mode === "multiseat" ? 1 : 2);
-                    setGuidedSession(next);
-                    setGuidedNotice(
-                      mode === "multiseat"
-                        ? "Guided multi-seat session started (A/B across center/left/right)."
-                        : "Guided session started (2 runs per side)."
-                    );
-                    router.push(`/record?mode=${mode}`);
-                  }}
-                >
-                  {mode === "multiseat" ? "Start Guided Multi-Seat Session" : "Start Guided Session (2x per side)"}
-                </button>
-                {mode !== "multiseat" ? (
-                  <button
-                    className="cta ctaSecondary"
-                    type="button"
-                    onClick={() => {
-                      if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
-                        return;
-                      }
+                        const next = startGuidedSession("scout", scoutCandidateCount);
+                        setGuidedSession(next);
+                        setGuidedNotice(`Scout session started (${next.steps.length} candidate locations).`);
+                        router.push(`/record?mode=${mode}`);
+                      }}
+                    >
+                      Start Placement Scout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="cta ctaSecondary"
+                      type="button"
+                      onClick={() => {
+                        if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
+                          return;
+                        }
 
-                      const next = startGuidedSession(mode as "ab" | "phase", 3);
-                      setGuidedSession(next);
-                      setGuidedNotice("Guided session started (3 runs per side).");
-                      router.push(`/record?mode=${mode}`);
-                    }}
-                  >
-                    Start Guided Session (3x per side)
-                  </button>
-                ) : null}
+                        const next = startGuidedSession(mode as "ab" | "phase" | "multiseat", mode === "multiseat" ? 1 : 2);
+                        setGuidedSession(next);
+                        setGuidedNotice(
+                          mode === "multiseat"
+                            ? "Guided multi-seat session started (A/B across center/left/right)."
+                            : "Guided session started (2 runs per side)."
+                        );
+                        router.push(`/record?mode=${mode}`);
+                      }}
+                    >
+                      {mode === "multiseat" ? "Start Guided Multi-Seat Session" : "Start Guided Session (2x per side)"}
+                    </button>
+                    {mode !== "multiseat" ? (
+                      <button
+                        className="cta ctaSecondary"
+                        type="button"
+                        onClick={() => {
+                          if (guidedSession && !window.confirm("Start a new guided session and replace current progress?")) {
+                            return;
+                          }
+
+                          const next = startGuidedSession(mode as "ab" | "phase", 3);
+                          setGuidedSession(next);
+                          setGuidedNotice("Guided session started (3 runs per side).");
+                          router.push(`/record?mode=${mode}`);
+                        }}
+                      >
+                        Start Guided Session (3x per side)
+                      </button>
+                    ) : null}
+                  </>
+                )}
                 {guidedSession ? (
                   <button
                     className="cta ctaDanger"

@@ -16,6 +16,8 @@
 - **Quick Baseline**: capture one reference run.
 - **Compare Placements (A/B)**: measure placement A and placement B.
 - **Phase Test (0 vs 180)**: measure phase switch positions.
+- **Multi-Seat Compromise (A/B)**: measure center/left/right seats for each placement and choose the best compromise.
+- **Placement Scout (4-8 candidates)**: measure several candidate locations, auto-rank them, then promote top two into guided A/B.
 
 ## During Recording
 - Keep room conditions steady.
@@ -31,8 +33,10 @@
 
 ## Practical Interpretation
 - If one run has lower score and fewer deep dips, use that configuration.
+- In scout mode, use ranked top-two candidates only as finalists; always confirm with guided A/B at the listening seat.
 - Big peaks can improve by reducing boundary loading (move sub away from corners/walls).
 - Deep dips often need location changes (move sub ~1-2 ft and re-test).
+- If the app flags volume drift, re-run captures at matched playback level before deciding.
 
 ## Important Limitations
 - Results are relative, not calibrated SPL.

@@ -1,7 +1,7 @@
 import type { RunMode } from "@/lib/types";
 
 export function normalizeMode(mode: string | null | undefined): RunMode {
-  if (mode === "ab" || mode === "phase" || mode === "multiseat") {
+  if (mode === "ab" || mode === "phase" || mode === "multiseat" || mode === "scout") {
     return mode;
   }
 
@@ -16,6 +16,8 @@ export function modeTitle(mode: RunMode): string {
       return "Phase Test (0 vs 180)";
     case "multiseat":
       return "Multi-Seat Compromise (A/B)";
+    case "scout":
+      return "Placement Scout (4-8 Candidates)";
     default:
       return "Quick Baseline Measurement";
   }
@@ -29,6 +31,8 @@ export function modeShortLabel(mode: RunMode): string {
       return "Phase Compare";
     case "multiseat":
       return "Multi-Seat";
+    case "scout":
+      return "Placement Scout";
     default:
       return "Baseline";
   }

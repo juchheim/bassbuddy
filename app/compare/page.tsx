@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ResetRunsButton } from "@/components/ResetRunsButton";
 import { ResponseChart } from "@/components/ResponseChart";
 import { RunPicker } from "@/components/RunPicker";
+import { startGuidedSession } from "@/lib/storage/guidedSession";
 import { deleteRun, listRuns } from "@/lib/storage/runsStore";
 import type { BassRun, RunMode } from "@/lib/types";
 import { MULTI_SEAT_ORDER, seatDisplayName } from "@/lib/constants/multiSeat";
@@ -18,7 +20,8 @@ import {
   groupRunsByLabel,
   isRepeatabilityModeRecommended
 } from "@/lib/utils/repeatability";
-import { evaluateCompareReadiness } from "@/lib/utils/runQuality";
+import { buildScoutRanking, scoutPromotionLabels } from "@/lib/utils/scout";
+import { evaluateCompareReadiness, evaluateRunGroupVolumeConsistency } from "@/lib/utils/runQuality";
 import styles from "@/app/compare/compare.module.css";
 
 type CompareStrategy = "single" | "repeatability";
@@ -66,6 +69,7 @@ function recommendationText(runA: BassRun, runB: BassRun) {
 }
 
 export default function ComparePage() {
+  const router = useRouter();
   const [mode, setMode] = useState<RunMode>("ab");
   const [runs, setRuns] = useState<BassRun[]>([]);
   const [selectedA, setSelectedA] = useState("");
@@ -79,7 +83,7 @@ export default function ComparePage() {
     const params = new URLSearchParams(window.location.search);
     const nextMode = normalizeMode(params.get("mode"));
     setMode(nextMode);
-    if (nextMode === "multiseat") {
+    if (nextMode === "multiseat" || nextMode === "scout") {
       setStrategy("single");
       return;
     }
@@ -98,7 +102,7 @@ export default function ComparePage() {
   }, [mode]);
 
   useEffect(() => {
-    if (mode === "multiseat") {
+    if (mode === "multiseat" || mode === "scout") {
       setStrategy("single");
       return;
     }
@@ -155,14 +159,70 @@ export default function ComparePage() {
     return buildMultiSeatRunSet(runs);
   }, [mode, runs]);
 
+  const scoutRanking = useMemo(() => {
+    if (mode !== "scout") {
+      return null;
+    }
+
+    return buildScoutRanking(runs);
+  }, [mode, runs]);
+
+  const scoutVolumeConsistency = useMemo(() => {
+    if (mode !== "scout" || !scoutRanking) {
+      return null;
+    }
+
+    return evaluateRunGroupVolumeConsistency(scoutRanking.candidates.map((candidate) => candidate.run));
+  }, [mode, scoutRanking]);
+
+  const scoutBlockers: string[] = [];
+  const scoutWarnings: string[] = [];
+
+  if (mode === "scout") {
+    const candidateCount = scoutRanking?.candidates.length ?? 0;
+    const topTwoIds = new Set((scoutRanking?.topTwo ?? []).map((entry) => entry.run.id));
+
+    if (candidateCount < 4) {
+      scoutBlockers.push("Capture at least 4 scout candidate locations before ranking.");
+    }
+
+    for (const candidate of scoutRanking?.candidates ?? []) {
+      if (candidate.run.quality?.blocking) {
+        if (topTwoIds.has(candidate.run.id)) {
+          scoutBlockers.push(`${candidate.label} failed quality checks (${candidate.run.quality.score}/100).`);
+        } else {
+          scoutWarnings.push(`${candidate.label} failed quality checks; recapture if you want it considered.`);
+        }
+      } else if (candidate.run.quality?.tier === "usable") {
+        scoutWarnings.push(`${candidate.label} is only usable quality (${candidate.run.quality.score}/100).`);
+      } else if (!candidate.run.quality) {
+        scoutWarnings.push(`${candidate.label} is a legacy run without quality metadata.`);
+      }
+    }
+
+    if (scoutVolumeConsistency?.severity === "block") {
+      scoutBlockers.push(
+        `Scout run volume drift is too high (max ${scoutVolumeConsistency.maxDeltaDb.toFixed(1)} dB vs session median).`
+      );
+    } else if (scoutVolumeConsistency?.severity === "warn") {
+      scoutWarnings.push(
+        `Scout run volume drift warning (max ${scoutVolumeConsistency.maxDeltaDb.toFixed(1)} dB vs session median).`
+      );
+    }
+  }
+
   const activeRunA =
-    mode === "multiseat"
+    mode === "scout"
+      ? scoutRanking?.topTwo?.[0].run
+      : mode === "multiseat"
       ? multiSeatDecision?.placementA.aggregateRun
       : strategy === "repeatability"
       ? profileA?.aggregateRun
       : runA;
   const activeRunB =
-    mode === "multiseat"
+    mode === "scout"
+      ? scoutRanking?.topTwo?.[1].run
+      : mode === "multiseat"
       ? multiSeatDecision?.placementB.aggregateRun
       : strategy === "repeatability"
       ? profileB?.aggregateRun
@@ -205,13 +265,17 @@ export default function ComparePage() {
   }
 
   const canDeclareWinner =
-    mode === "multiseat"
+    mode === "scout"
+      ? Boolean(compareReadiness?.canDeclareWinner) && scoutBlockers.length === 0
+      : mode === "multiseat"
       ? Boolean(compareReadiness?.canDeclareWinner) && Boolean(multiSeatDecision?.canDeclareWinner)
       : Boolean(compareReadiness?.canDeclareWinner) &&
         (strategy !== "repeatability" || repeatabilityBlockers.length === 0);
 
   const showComparisonSections =
-    mode === "multiseat"
+    mode === "scout"
+      ? Boolean(scoutRanking?.topTwo && activeRunA && activeRunB && activeRunA.id !== activeRunB.id)
+      : mode === "multiseat"
       ? Boolean(multiSeatDecision)
       : Boolean(activeRunA && activeRunB && activeRunA.id !== activeRunB.id);
 
@@ -229,12 +293,13 @@ export default function ComparePage() {
             <option value="ab">Compare Two Placements (A/B)</option>
             <option value="phase">Phase Test (0 vs 180)</option>
             <option value="multiseat">Multi-Seat Compromise (A/B)</option>
+            <option value="scout">Placement Scout (4-8 Candidates)</option>
             <option value="baseline">Quick Baseline</option>
           </select>
         </label>
         <p className="muted">Current mode: {modeTitle(mode)}</p>
 
-        {mode !== "multiseat" ? (
+        {mode !== "multiseat" && mode !== "scout" ? (
           <label>
             Compare strategy
             <select value={strategy} onChange={(event) => setStrategy(event.target.value as CompareStrategy)}>
@@ -242,13 +307,80 @@ export default function ComparePage() {
               <option value="repeatability">Repeatability mode (2-3 runs per side)</option>
             </select>
           </label>
+        ) : mode === "scout" ? (
+          <p className="muted" style={{ margin: 0 }}>
+            Placement Scout ranks candidate locations by smoothness first, then deep dips and boom peaks.
+          </p>
         ) : (
           <p className="muted" style={{ margin: 0 }}>
             Multi-seat mode compares A vs B compromise across Center/Left/Right seat captures.
           </p>
         )}
 
-        {mode === "multiseat" ? (
+        {mode === "scout" ? (
+          <>
+            <p className="muted" style={{ margin: 0 }}>
+              Capture at least 4 labeled scout locations. The latest run per location is ranked.
+            </p>
+            {scoutRanking?.candidates.length ? (
+              <div className={styles.scoutGrid}>
+                {scoutRanking.candidates.map((candidate) => (
+                  <div key={candidate.run.id} className={styles.scoutCard}>
+                    <p className={styles.seatTitle}>
+                      #{candidate.rank} {candidate.label}
+                    </p>
+                    <p className="muted" style={{ margin: 0 }}>
+                      Smoothness {candidate.run.score.toFixed(1)} | Deep dips {candidate.run.highlights.deepDipCount} | Peak{" "}
+                      {candidate.run.highlights.maxPeakDb.toFixed(1)} dB
+                    </p>
+                    {typeof candidate.run.volumeDriftDb === "number" ? (
+                      <p className="muted" style={{ margin: 0 }}>
+                        Session volume drift: {candidate.run.volumeDriftDb.toFixed(1)} dB
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="warning" style={{ margin: 0 }}>
+                No scout runs found yet. Start a scout session from Setup.
+              </p>
+            )}
+            {scoutRanking?.topTwo && scoutRanking.candidates.length >= 4 ? (
+              <button
+                type="button"
+                className="cta"
+                onClick={() => {
+                  const finalists = scoutRanking?.topTwo;
+
+                  if (!finalists) {
+                    setNotice("Top scout finalists are not available yet.");
+                    return;
+                  }
+
+                  if (
+                    !window.confirm(
+                      `Start guided A/B compare with ${finalists[0].label} vs ${finalists[1].label}?`
+                    )
+                  ) {
+                    return;
+                  }
+
+                  const labels = scoutPromotionLabels(finalists);
+                  startGuidedSession("ab", 2, { labelOverrides: labels });
+                  setNotice(`Started guided A/B compare: ${labels.A} vs ${labels.B}.`);
+                  router.push("/record?mode=ab");
+                }}
+              >
+                Promote Top 2 Into Guided A/B Compare
+              </button>
+            ) : scoutRanking?.topTwo ? (
+              <p className="warning" style={{ margin: 0 }}>
+                Capture at least 4 candidate locations before promoting finalists.
+              </p>
+            ) : null}
+          </>
+        ) : mode === "multiseat" ? (
           <>
             <p className="muted" style={{ margin: 0 }}>
               Required labels: Placement A/B for Center, Left, and Right seats.
@@ -387,7 +519,7 @@ export default function ComparePage() {
 
       {showComparisonSections ? (
         <>
-          {compareReadiness || multiSeatDecision ? (
+          {compareReadiness || multiSeatDecision || mode === "scout" ? (
             <section className={`panel ${styles.qualityPanel}`} style={{ marginTop: 12 }}>
               <h2>Measurement Quality Gate</h2>
               {compareReadiness?.blockers.length ? (
@@ -408,7 +540,26 @@ export default function ComparePage() {
                 </p>
               ))}
 
-              {mode === "multiseat" ? (
+              {mode === "scout" ? (
+                <>
+                  {scoutBlockers.map((blocker) => (
+                    <p key={blocker} className="error" style={{ margin: 0 }}>
+                      {blocker}
+                    </p>
+                  ))}
+                  {scoutWarnings.map((warning) => (
+                    <p key={warning} className="warning" style={{ margin: 0 }}>
+                      {warning}
+                    </p>
+                  ))}
+                  {scoutVolumeConsistency ? (
+                    <p className="muted" style={{ marginBottom: 0 }}>
+                      Scout volume consistency: reference {scoutVolumeConsistency.referenceDb.toFixed(1)} dB, max delta{" "}
+                      {scoutVolumeConsistency.maxDeltaDb.toFixed(1)} dB.
+                    </p>
+                  ) : null}
+                </>
+              ) : mode === "multiseat" ? (
                 <>
                   {multiSeatDecision?.blockers.map((blocker) => (
                     <p key={blocker} className="error" style={{ margin: 0 }}>
@@ -482,7 +633,7 @@ export default function ComparePage() {
             </section>
           ) : null}
 
-          {recommendation || mode === "multiseat" ? (
+          {recommendation || mode === "multiseat" || mode === "scout" ? (
             <section className="panel" style={{ marginTop: 12 }}>
               <h2>Recommendation</h2>
               {canDeclareWinner ? (
@@ -494,6 +645,15 @@ export default function ComparePage() {
                         : `Placement ${multiSeatDecision.winner} wins compromise across seats.`}
                     </p>
                     <p className="muted">{multiSeatDecision.reason}</p>
+                  </>
+                ) : mode === "scout" && scoutRanking?.topTwo ? (
+                  <>
+                    <p className={styles.recommendation}>
+                      Best scout candidates: {scoutRanking.topTwo[0].label} and {scoutRanking.topTwo[1].label}.
+                    </p>
+                    <p className="muted">
+                      Promote these two into guided A/B at the listening seat to confirm the final winner.
+                    </p>
                   </>
                 ) : recommendation ? (
                   <>

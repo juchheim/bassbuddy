@@ -38,6 +38,22 @@ export interface CompareReadiness {
   repeatability: RepeatabilitySignal | null;
 }
 
+export interface VolumeDriftAssessment {
+  deltaDb: number;
+  severity: "ok" | "warn" | "block";
+}
+
+export interface VolumeConsistencyAssessment {
+  referenceDb: number;
+  maxDeltaDb: number;
+  severity: "ok" | "warn" | "block";
+  outliers: Array<{
+    runId: string;
+    label: string;
+    deltaDb: number;
+  }>;
+}
+
 function qualityTier(score: number): RunQualityTier {
   if (score >= 85) {
     return "excellent";
@@ -181,18 +197,66 @@ function runName(run: BassRun, fallback: string): string {
   return run.label?.trim() ? run.label : fallback;
 }
 
-export function detectVolumeMismatch(runA: BassRun, runB: BassRun): { deltaDb: number; severity: "ok" | "warn" | "block" } {
-  const deltaDb = Math.abs(fallbackVolumeAnchor(runA) - fallbackVolumeAnchor(runB));
-
+export function classifyVolumeDelta(deltaDb: number): VolumeDriftAssessment["severity"] {
   if (deltaDb > 4) {
-    return { deltaDb, severity: "block" };
+    return "block";
   }
 
   if (deltaDb > 2) {
-    return { deltaDb, severity: "warn" };
+    return "warn";
   }
 
-  return { deltaDb, severity: "ok" };
+  return "ok";
+}
+
+export function evaluateVolumeDrift(referenceDb: number, candidateDb: number): VolumeDriftAssessment {
+  const deltaDb = Math.abs(referenceDb - candidateDb);
+
+  return {
+    deltaDb,
+    severity: classifyVolumeDelta(deltaDb)
+  };
+}
+
+export function detectVolumeMismatch(runA: BassRun, runB: BassRun): { deltaDb: number; severity: "ok" | "warn" | "block" } {
+  const assessment = evaluateVolumeDrift(fallbackVolumeAnchor(runA), fallbackVolumeAnchor(runB));
+  return assessment;
+}
+
+export function evaluateRunGroupVolumeConsistency(runs: BassRun[]): VolumeConsistencyAssessment | null {
+  if (runs.length < 2) {
+    return null;
+  }
+
+  const anchors = runs.map((run) => fallbackVolumeAnchor(run));
+  const referenceDb = median(anchors);
+  const outliers = runs
+    .map((run, index) => {
+      const assessment = evaluateVolumeDrift(referenceDb, anchors[index]);
+
+      return {
+        runId: run.id,
+        label: runName(run, `Run ${index + 1}`),
+        deltaDb: assessment.deltaDb,
+        severity: assessment.severity
+      };
+    })
+    .filter((entry) => entry.severity !== "ok")
+    .sort((a, b) => b.deltaDb - a.deltaDb);
+
+  const maxDeltaDb = Math.max(...anchors.map((anchor) => Math.abs(anchor - referenceDb)));
+  const severity = classifyVolumeDelta(maxDeltaDb);
+
+  return {
+    referenceDb,
+    maxDeltaDb,
+    severity,
+    outliers: outliers.map((entry) => ({
+      runId: entry.runId,
+      label: entry.label,
+      deltaDb: entry.deltaDb
+    }))
+  };
 }
 
 export function computeRepeatabilitySignal(runA: BassRun, runB: BassRun): RepeatabilitySignal | null {

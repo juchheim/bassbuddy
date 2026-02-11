@@ -7,6 +7,7 @@ This MVP is intentionally relative and decision-focused:
 - Compare A vs B placements.
 - Compare phase 0 vs 180.
 - Compare A vs B as a compromise across multiple seats.
+- Scout and rank 4-8 candidate placements before final A/B.
 - Get a clear winner with plain-English guidance.
 
 ## What This MVP Does
@@ -18,6 +19,9 @@ This MVP is intentionally relative and decision-focused:
 - Scores each run for measurement quality and flags poor captures.
 - Supports repeatability compare mode (2-3 runs per side, median-profile compare with noise-floor gating).
 - Supports multi-seat compromise mode (Center/Left/Right seat weighting for A vs B).
+- Supports placement scout mode (auto-rank candidate locations and promote top two into guided A/B).
+- Enforces run-to-run volume consistency gates to catch level drift between captures.
+- Includes local session tools: fresh-session reset plus JSON export/import.
 - Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
 
 ## What It Does Not Do
@@ -86,10 +90,12 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - A/B placement compare
    - Phase compare
    - Multi-seat compromise compare
+   - Placement scout (4-8 candidate locations)
 3. In Setup:
    - Complete checklist + mic level check on first-time setup
    - Use \"Run Full Setup Again\" only when needed on returning sessions
    - Optional for A/B or phase: start a guided repeatability session (2x or 3x per side)
+   - For placement scout: start guided scout session and choose 4-8 candidate slots
    - Open/download test track
 4. In Record:
    - Optional: run 10-second Quick Preflight for level sanity
@@ -99,11 +105,13 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
 5. In Results:
    - Read curve + smoothness summary
    - Label run (`Placement A/B` or `Phase 0/180`)
+   - In scout mode, labels are `Scout Location N` and fill guided scout progress
    - If guided session is active, continue to next guided step from Results
 6. In Compare:
    - Choose single-run compare or repeatability mode
    - In repeatability mode, pick two labels with 2-3 runs per side
    - In multi-seat mode, capture A/B for Center/Left/Right and compare compromise score
+   - In scout mode, review ranked candidates and promote top 2 into guided A/B seat compare
    - Review overlay + quality/repeatability gates + winner recommendation
 
 ## Practical Use Notes

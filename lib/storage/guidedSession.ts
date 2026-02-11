@@ -1,7 +1,8 @@
-import type { RunMode } from "@/lib/types";
 import { MULTI_SEAT_LABELS } from "@/lib/constants/multiSeat";
+import { clampScoutCandidates, scoutLabel } from "@/lib/constants/scout";
+import type { RunMode } from "@/lib/types";
 
-export type GuidedMode = "ab" | "phase" | "multiseat";
+export type GuidedMode = "ab" | "phase" | "multiseat" | "scout";
 
 export interface GuidedStep {
   stepIndex: number;
@@ -28,6 +29,15 @@ export interface GuidedProgress {
   total: number;
 }
 
+export interface GuidedLabelOverrides {
+  A?: string;
+  B?: string;
+}
+
+export interface StartGuidedSessionOptions {
+  labelOverrides?: GuidedLabelOverrides;
+}
+
 const GUIDED_SESSION_KEY = "bassbuddy.v1.guidedSession";
 const GUIDED_SESSION_VERSION = 1;
 
@@ -39,11 +49,27 @@ function clampRepeats(repeatsPerSide: number): number {
   return 3;
 }
 
-function isGuidedMode(mode: RunMode): mode is GuidedMode {
-  return mode === "ab" || mode === "phase" || mode === "multiseat";
+function normalizeGuidedCount(mode: GuidedMode, repeatsPerSide: number): number {
+  if (mode === "multiseat") {
+    return 1;
+  }
+
+  if (mode === "scout") {
+    return clampScoutCandidates(repeatsPerSide);
+  }
+
+  return clampRepeats(repeatsPerSide);
 }
 
-export function createGuidedSteps(mode: GuidedMode, repeatsPerSide: number): GuidedStep[] {
+function isGuidedMode(mode: RunMode): mode is GuidedMode {
+  return mode === "ab" || mode === "phase" || mode === "multiseat" || mode === "scout";
+}
+
+export function createGuidedSteps(
+  mode: GuidedMode,
+  repeatsPerSide: number,
+  options?: StartGuidedSessionOptions
+): GuidedStep[] {
   if (mode === "multiseat") {
     return MULTI_SEAT_LABELS.map((entry, stepIndex) => ({
       stepIndex,
@@ -54,17 +80,33 @@ export function createGuidedSteps(mode: GuidedMode, repeatsPerSide: number): Gui
     }));
   }
 
+  if (mode === "scout") {
+    const candidates = clampScoutCandidates(repeatsPerSide);
+
+    return Array.from({ length: candidates }, (_, index) => {
+      const repeatIndex = index + 1;
+
+      return {
+        stepIndex: index,
+        side: "A",
+        repeatIndex,
+        repeatsPerSide: candidates,
+        label: scoutLabel(repeatIndex)
+      } satisfies GuidedStep;
+    });
+  }
+
   const repeats = clampRepeats(repeatsPerSide);
 
   const labels =
     mode === "ab"
       ? {
-          A: "Placement A",
-          B: "Placement B"
+          A: options?.labelOverrides?.A?.trim() || "Placement A",
+          B: options?.labelOverrides?.B?.trim() || "Placement B"
         }
       : {
-          A: "Phase 0",
-          B: "Phase 180"
+          A: options?.labelOverrides?.A?.trim() || "Phase 0",
+          B: options?.labelOverrides?.B?.trim() || "Phase 180"
         };
 
   const steps: GuidedStep[] = [];
@@ -85,6 +127,10 @@ export function createGuidedSteps(mode: GuidedMode, repeatsPerSide: number): Gui
 }
 
 export function describeGuidedStep(step: GuidedStep): string {
+  if (step.repeatsPerSide <= 1) {
+    return step.label;
+  }
+
   return `${step.label} (${step.repeatIndex}/${step.repeatsPerSide})`;
 }
 
@@ -97,7 +143,7 @@ function parseGuidedSession(raw: unknown): GuidedSessionV1 | null {
 
   if (
     parsed.version !== GUIDED_SESSION_VERSION ||
-    (parsed.mode !== "ab" && parsed.mode !== "phase" && parsed.mode !== "multiseat") ||
+    (parsed.mode !== "ab" && parsed.mode !== "phase" && parsed.mode !== "multiseat" && parsed.mode !== "scout") ||
     typeof parsed.id !== "string" ||
     typeof parsed.currentStepIndex !== "number" ||
     !Array.isArray(parsed.steps) ||
@@ -109,8 +155,8 @@ function parseGuidedSession(raw: unknown): GuidedSessionV1 | null {
   const steps = parsed.steps
     .map((step, stepIndex) => {
       if (!step || typeof step !== "object") {
-      return null;
-    }
+        return null;
+      }
 
       const candidate = step as Partial<GuidedStep>;
 
@@ -141,7 +187,7 @@ function parseGuidedSession(raw: unknown): GuidedSessionV1 | null {
     version: GUIDED_SESSION_VERSION,
     id: parsed.id,
     mode: parsed.mode,
-    repeatsPerSide: parsed.mode === "multiseat" ? 1 : clampRepeats(parsed.repeatsPerSide ?? 3),
+    repeatsPerSide: normalizeGuidedCount(parsed.mode, parsed.repeatsPerSide ?? 3),
     createdAt: typeof parsed.createdAt === "string" ? parsed.createdAt : new Date().toISOString(),
     updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date().toISOString(),
     currentStepIndex: Math.max(0, Math.floor(parsed.currentStepIndex)),
@@ -198,8 +244,12 @@ export function getGuidedSessionForMode(mode: RunMode): GuidedSessionV1 | null {
   return session;
 }
 
-export function startGuidedSession(mode: GuidedMode, repeatsPerSide = 3): GuidedSessionV1 {
-  const repeats = mode === "multiseat" ? 1 : clampRepeats(repeatsPerSide);
+export function startGuidedSession(
+  mode: GuidedMode,
+  repeatsPerSide = 3,
+  options?: StartGuidedSessionOptions
+): GuidedSessionV1 {
+  const repeats = normalizeGuidedCount(mode, repeatsPerSide);
   const now = new Date().toISOString();
 
   const session: GuidedSessionV1 = {
@@ -210,7 +260,7 @@ export function startGuidedSession(mode: GuidedMode, repeatsPerSide = 3): Guided
     createdAt: now,
     updatedAt: now,
     currentStepIndex: 0,
-    steps: createGuidedSteps(mode, repeats),
+    steps: createGuidedSteps(mode, repeats, options),
     runIds: []
   };
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ModeCard } from "@/components/ModeCard";
-import { ResetRunsButton } from "@/components/ResetRunsButton";
+import { SessionTools } from "@/components/SessionTools";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import type { RunMode } from "@/lib/types";
 import styles from "@/app/page.module.css";
@@ -83,6 +83,12 @@ export default function HomePage() {
           cta={setupCompleted ? "Start Multi-Seat" : "Open Setup"}
         />
         <ModeCard
+          title="Placement Scout (4-8 Candidates)"
+          description="Measure several candidate sub locations, auto-rank them, then promote the top two into A/B."
+          href={startHref("scout", setupCompleted)}
+          cta={setupCompleted ? "Start Placement Scout" : "Open Setup"}
+        />
+        <ModeCard
           title="Review Saved Runs"
           description="Open compare view to overlay existing runs and re-check decisions."
           href="/compare"
@@ -104,9 +110,11 @@ export default function HomePage() {
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>
-        <h2 className={styles.sectionTitle}>Start Fresh</h2>
-        <p className="muted">Delete saved runs if you want to restart measurements from scratch.</p>
-        <ResetRunsButton className="cta ctaDanger" />
+        <h2 className={styles.sectionTitle}>Session Tools</h2>
+        <p className="muted">
+          Start fresh, export your local runs to JSON backup, or import a saved run set (merge or replace).
+        </p>
+        <SessionTools />
       </section>
     </main>
   );

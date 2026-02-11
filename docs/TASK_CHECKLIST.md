@@ -13,3 +13,7 @@
 - [x] Add unit tests for DSP core and synthetic signal generation
 - [x] Add README with setup/run/test and measurement workflow
 - [x] Run tests and fix issues
+- [x] Add multi-seat compromise mode (A/B across center/left/right)
+- [x] Add repeatability guided sessions + quality gating
+- [x] Add placement scout mode (4-8 candidate ranking + A/B promotion)
+- [x] Add session tools (fresh reset + JSON export/import)

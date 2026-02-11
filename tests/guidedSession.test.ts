@@ -58,6 +58,28 @@ describe("createGuidedSteps", () => {
     expect(steps[5]?.label).toContain("Right Seat");
     expect(steps.every((step) => step.repeatIndex === 1)).toBe(true);
   });
+
+  it("creates 4-8 candidate scout steps", () => {
+    const minSteps = createGuidedSteps("scout", 1);
+    const maxSteps = createGuidedSteps("scout", 99);
+
+    expect(minSteps).toHaveLength(4);
+    expect(maxSteps).toHaveLength(8);
+    expect(maxSteps[0]?.label).toContain("Scout Location 1");
+    expect(maxSteps[7]?.label).toContain("Scout Location 8");
+  });
+
+  it("applies optional label overrides for promoted A/B sessions", () => {
+    const steps = createGuidedSteps("ab", 2, {
+      labelOverrides: {
+        A: "Placement A (Scout Location 2)",
+        B: "Placement B (Scout Location 4)"
+      }
+    });
+
+    expect(steps[0]?.label).toContain("Scout Location 2");
+    expect(steps[2]?.label).toContain("Scout Location 4");
+  });
 });
 
 describe("guided session helpers", () => {

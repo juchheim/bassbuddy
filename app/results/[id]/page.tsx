@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ResponseChart } from "@/components/ResponseChart";
 import { SummaryCard } from "@/components/SummaryCard";
 import { MULTI_SEAT_LABELS } from "@/lib/constants/multiSeat";
+import { SCOUT_MAX_CANDIDATES, scoutLabel } from "@/lib/constants/scout";
 import {
   describeGuidedStep,
   getCurrentGuidedStep,
@@ -67,6 +68,10 @@ export default function ResultsPage() {
       ? ["Phase 0", "Phase 180"]
       : run.mode === "multiseat"
       ? MULTI_SEAT_LABELS.map((entry) => entry.label)
+      : run.mode === "scout"
+      ? guidedSession?.mode === "scout"
+        ? guidedSession.steps.map((step) => step.label)
+        : Array.from({ length: SCOUT_MAX_CANDIDATES }, (_, index) => scoutLabel(index + 1))
       : [];
 
   return (

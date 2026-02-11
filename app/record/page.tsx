@@ -23,11 +23,12 @@ import {
   MAX_RECORD_SECONDS,
   TRACK_DURATION_AFTER_BEEP_SEC
 } from "@/lib/constants/testTrack";
-import { saveRun } from "@/lib/storage/runsStore";
+import { getRunById, saveRun } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import type { BassRun, MicProcessingRisk, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
-import { assessQuickPreflight, evaluateRunQuality } from "@/lib/utils/runQuality";
+import { assessQuickPreflight, evaluateRunQuality, evaluateVolumeDrift } from "@/lib/utils/runQuality";
+import { median } from "@/lib/utils/math";
 import styles from "@/app/record/record.module.css";
 
 function concatFloat32(chunks: Float32Array[]): Float32Array {
@@ -50,6 +51,18 @@ function getPlatform(): string {
 
   const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
   return nav.userAgentData?.platform ?? nav.platform ?? "unknown";
+}
+
+function runVolumeAnchor(run: BassRun): number {
+  if (typeof run.volumeAnchorDb === "number") {
+    return run.volumeAnchorDb;
+  }
+
+  if (typeof run.medianRawLevelDb === "number") {
+    return run.medianRawLevelDb;
+  }
+
+  return median(run.measurements.map((measurement) => measurement.levelRaw));
 }
 
 const PREFLIGHT_DURATION_SEC = 10;
@@ -267,9 +280,12 @@ export default function RecordPage() {
       });
       const activeGuidedSession = getGuidedSessionForMode(mode);
       const guidedStep = activeGuidedSession ? getCurrentGuidedStep(activeGuidedSession) : null;
+      const previousGuidedRuns = (activeGuidedSession?.runIds ?? [])
+        .map((runId) => getRunById(runId))
+        .filter((entry): entry is BassRun => Boolean(entry));
 
       const notes: string[] = [];
-      const quality = evaluateRunQuality({
+      let quality = evaluateRunQuality({
         confidence: analysis.confidence,
         beepDetected: analysis.beepDetected,
         clippingLikely: analysis.clippingLikely || peakLive > 0.98,
@@ -279,6 +295,31 @@ export default function RecordPage() {
         overallRmsDbfs: analysis.overallRmsDbfs,
         beepToneLevelDb: analysis.beepToneLevelDb
       });
+
+      let volumeDriftDb: number | undefined;
+
+      if (previousGuidedRuns.length) {
+        const referenceAnchorDb = median(previousGuidedRuns.map((run) => runVolumeAnchor(run)));
+        const drift = evaluateVolumeDrift(referenceAnchorDb, analysis.volumeAnchorDb);
+        volumeDriftDb = drift.deltaDb;
+
+        if (drift.severity === "block") {
+          quality = {
+            ...quality,
+            blocking: true,
+            issues: [...quality.issues, `Volume drift too high vs session reference (${drift.deltaDb.toFixed(1)} dB).`]
+          };
+          notes.push(
+            `Session volume drift is high (${drift.deltaDb.toFixed(1)} dB). Re-run at matched playback level.`
+          );
+        } else if (drift.severity === "warn") {
+          quality = {
+            ...quality,
+            issues: [...quality.issues, `Volume drift warning vs session reference (${drift.deltaDb.toFixed(1)} dB).`]
+          };
+          notes.push(`Volume drift warning (${drift.deltaDb.toFixed(1)} dB) compared with earlier guided captures.`);
+        }
+      }
 
       if (analysis.clippingLikely || peakLive > 0.98) {
         notes.push("Possible clipping detected. Consider reducing playback volume slightly.");
@@ -304,6 +345,7 @@ export default function RecordPage() {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         mode,
+        sessionId: activeGuidedSession?.id,
         deviceInfo: {
           userAgent: navigator.userAgent,
           platform: getPlatform()
@@ -320,6 +362,7 @@ export default function RecordPage() {
         medianRawLevelDb: analysis.medianRawDb,
         beepToneLevelDb: analysis.beepToneLevelDb,
         volumeAnchorDb: analysis.volumeAnchorDb,
+        volumeDriftDb,
         notes: notes.length ? notes.join(" ") : undefined
       };
 

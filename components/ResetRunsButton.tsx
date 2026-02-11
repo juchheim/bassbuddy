@@ -28,6 +28,10 @@ function scopeLabel(mode?: RunMode): string {
     return "all multi-seat runs";
   }
 
+  if (mode === "scout") {
+    return "all placement-scout runs";
+  }
+
   return "all baseline runs";
 }
 

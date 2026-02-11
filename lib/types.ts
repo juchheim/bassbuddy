@@ -1,4 +1,4 @@
-export type RunMode = "baseline" | "ab" | "phase" | "multiseat";
+export type RunMode = "baseline" | "ab" | "phase" | "multiseat" | "scout";
 export type Confidence = "high" | "medium" | "low";
 
 export interface FrequencyMeasurement {
@@ -50,6 +50,7 @@ export interface BassRun {
   createdAt: string;
   mode: RunMode;
   label?: string;
+  sessionId?: string;
   deviceInfo: DeviceInfo;
   micSettings: MicSettingsSnapshot;
   sampleRate: number;
@@ -62,6 +63,7 @@ export interface BassRun {
   medianRawLevelDb?: number;
   beepToneLevelDb?: number;
   volumeAnchorDb?: number;
+  volumeDriftDb?: number;
   notes?: string;
 }
 

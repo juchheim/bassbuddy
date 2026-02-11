@@ -16,8 +16,9 @@ This MVP reports relative bass response only and focuses on simple, human-readab
 - Browser mic capture with processing constraints requested.
 - Sync beep detection, known-segment tone analysis, relative normalization.
 - Smoothness scoring and highlight callouts.
-- Baseline, A/B, and phase workflows.
+- Baseline, A/B, phase, multi-seat compromise, and placement-scout workflows.
 - Local persistence with schema versioning/migration stub.
+- Local session tools (fresh session reset + JSON export/import).
 - Test-track page and downloadable test track.
 - Unit tests for DSP core modules.
 

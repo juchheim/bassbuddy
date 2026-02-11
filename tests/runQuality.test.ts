@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { BassRun } from "@/lib/types";
-import { assessQuickPreflight, evaluateCompareReadiness, evaluateRunQuality } from "@/lib/utils/runQuality";
+import {
+  assessQuickPreflight,
+  evaluateCompareReadiness,
+  evaluateRunGroupVolumeConsistency,
+  evaluateRunQuality,
+  evaluateVolumeDrift
+} from "@/lib/utils/runQuality";
 
 function makeRun(overrides: Partial<BassRun> = {}): BassRun {
   return {
@@ -151,5 +157,27 @@ describe("assessQuickPreflight", () => {
 
     expect(assessment.grade).toBe("warn");
     expect(assessment.warnings.some((entry) => entry.includes("processing"))).toBe(true);
+  });
+});
+
+describe("volume consistency helpers", () => {
+  it("classifies per-run drift severity", () => {
+    expect(evaluateVolumeDrift(-30, -30.5).severity).toBe("ok");
+    expect(evaluateVolumeDrift(-30, -32.4).severity).toBe("warn");
+    expect(evaluateVolumeDrift(-30, -35.2).severity).toBe("block");
+  });
+
+  it("reports group-level drift and outliers", () => {
+    const runs = [
+      makeRun({ id: "a", label: "A", volumeAnchorDb: -30 }),
+      makeRun({ id: "b", label: "B", volumeAnchorDb: -30.8 }),
+      makeRun({ id: "c", label: "C", volumeAnchorDb: -35.2 })
+    ];
+
+    const consistency = evaluateRunGroupVolumeConsistency(runs);
+
+    expect(consistency).not.toBeNull();
+    expect(consistency?.severity).toBe("block");
+    expect(consistency?.outliers.some((entry) => entry.label === "C")).toBe(true);
   });
 });

@@ -3,12 +3,80 @@ import type { BassRun, RunMode, RunsStoreV1 } from "@/lib/types";
 export const RUNS_STORAGE_KEY = "bassbuddy.v1.runs";
 export const RUNS_STORE_VERSION = 1;
 const MAX_RUNS = 50;
+const VALID_MODES: RunMode[] = ["baseline", "ab", "phase", "multiseat", "scout"];
+
+export interface RunsExportPayload {
+  version: 1;
+  exportedAt: string;
+  runs: BassRun[];
+}
+
+export interface ImportRunsOptions {
+  replaceExisting?: boolean;
+}
+
+export interface ImportRunsResult {
+  added: number;
+  replaced: number;
+  total: number;
+}
 
 function emptyStore(): RunsStoreV1 {
   return {
     version: RUNS_STORE_VERSION,
     runs: []
   };
+}
+
+function isRunMode(value: string): value is RunMode {
+  return VALID_MODES.includes(value as RunMode);
+}
+
+function sortByCreatedAtDesc(runs: BassRun[]): BassRun[] {
+  return [...runs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function normalizeRun(run: BassRun): BassRun {
+  if (isRunMode(run.mode)) {
+    return run;
+  }
+
+  return {
+    ...run,
+    mode: "baseline"
+  };
+}
+
+function compactRuns(runs: BassRun[]): BassRun[] {
+  const deduped = new Map<string, BassRun>();
+
+  for (const run of sortByCreatedAtDesc(runs)) {
+    const normalized = normalizeRun(run);
+
+    if (!deduped.has(normalized.id)) {
+      deduped.set(normalized.id, normalized);
+    }
+  }
+
+  return Array.from(deduped.values()).slice(0, MAX_RUNS);
+}
+
+function parseRuns(raw: unknown): BassRun[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((run): run is BassRun => Boolean(run && typeof run === "object" && typeof run.id === "string"));
+  }
+
+  if (!raw || typeof raw !== "object") {
+    return [];
+  }
+
+  const candidate = raw as Partial<RunsStoreV1> & { runs?: unknown };
+
+  if (!Array.isArray(candidate.runs)) {
+    return [];
+  }
+
+  return candidate.runs.filter((run): run is BassRun => Boolean(run && typeof run === "object" && typeof run.id === "string"));
 }
 
 function migrateStore(raw: unknown): RunsStoreV1 {
@@ -19,13 +87,9 @@ function migrateStore(raw: unknown): RunsStoreV1 {
   const parsed = raw as Partial<RunsStoreV1>;
 
   if (parsed.version === 1 && Array.isArray(parsed.runs)) {
-    const runs = parsed.runs
-      .filter((run): run is BassRun => Boolean(run && typeof run.id === "string" && Array.isArray(run.measurements)))
-      .slice(0, MAX_RUNS);
-
     return {
       version: 1,
-      runs
+      runs: compactRuns(parseRuns(parsed.runs))
     };
   }
 
@@ -59,13 +123,27 @@ function saveStore(store: RunsStoreV1): void {
   localStorage.setItem(RUNS_STORAGE_KEY, JSON.stringify(store));
 }
 
+function writeRuns(runs: BassRun[]): void {
+  const nextRuns = compactRuns(runs);
+
+  if (!nextRuns.length) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(RUNS_STORAGE_KEY);
+    }
+    return;
+  }
+
+  saveStore({
+    version: RUNS_STORE_VERSION,
+    runs: nextRuns
+  });
+}
+
 export function listRuns(mode?: RunMode): BassRun[] {
   const runs = loadStore().runs;
   const filtered = mode ? runs.filter((run) => run.mode === mode) : runs;
 
-  return [...filtered].sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  return sortByCreatedAtDesc(filtered);
 }
 
 export function getRunById(id: string): BassRun | undefined {
@@ -75,12 +153,7 @@ export function getRunById(id: string): BassRun | undefined {
 export function saveRun(run: BassRun): void {
   const store = loadStore();
   const deduped = store.runs.filter((entry) => entry.id !== run.id);
-  const nextRuns = [run, ...deduped].slice(0, MAX_RUNS);
-
-  saveStore({
-    version: RUNS_STORE_VERSION,
-    runs: nextRuns
-  });
+  writeRuns([run, ...deduped]);
 }
 
 export function updateRun(id: string, updater: (run: BassRun) => BassRun): BassRun | undefined {
@@ -92,7 +165,7 @@ export function updateRun(id: string, updater: (run: BassRun) => BassRun): BassR
       return run;
     }
 
-    updated = updater(run);
+    updated = normalizeRun(updater(run));
     return updated;
   });
 
@@ -100,11 +173,7 @@ export function updateRun(id: string, updater: (run: BassRun) => BassRun): BassR
     return undefined;
   }
 
-  saveStore({
-    version: RUNS_STORE_VERSION,
-    runs: nextRuns
-  });
-
+  writeRuns(nextRuns);
   return updated;
 }
 
@@ -116,18 +185,7 @@ export function deleteRun(id: string): boolean {
     return false;
   }
 
-  if (!nextRuns.length) {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(RUNS_STORAGE_KEY);
-    }
-    return true;
-  }
-
-  saveStore({
-    version: RUNS_STORE_VERSION,
-    runs: nextRuns
-  });
-
+  writeRuns(nextRuns);
   return true;
 }
 
@@ -141,18 +199,7 @@ export function clearRuns(mode?: RunMode): number {
       return 0;
     }
 
-    if (!nextRuns.length) {
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(RUNS_STORAGE_KEY);
-      }
-      return removedCount;
-    }
-
-    saveStore({
-      version: RUNS_STORE_VERSION,
-      runs: nextRuns
-    });
-
+    writeRuns(nextRuns);
     return removedCount;
   }
 
@@ -163,4 +210,62 @@ export function clearRuns(mode?: RunMode): number {
   const removedCount = loadStore().runs.length;
   localStorage.removeItem(RUNS_STORAGE_KEY);
   return removedCount;
+}
+
+export function exportRunsPayload(mode?: RunMode): RunsExportPayload {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    runs: listRuns(mode)
+  };
+}
+
+function importRunsRaw(raw: unknown, options?: ImportRunsOptions): ImportRunsResult {
+  const incoming = compactRuns(parseRuns(raw));
+
+  if (!incoming.length) {
+    return {
+      added: 0,
+      replaced: 0,
+      total: loadStore().runs.length
+    };
+  }
+
+  const existing = loadStore().runs;
+
+  if (options?.replaceExisting) {
+    writeRuns(incoming);
+
+    return {
+      added: incoming.length,
+      replaced: existing.length,
+      total: Math.min(incoming.length, MAX_RUNS)
+    };
+  }
+
+  const existingIds = new Set(existing.map((run) => run.id));
+  const merged = compactRuns([...incoming, ...existing]);
+  const added = merged.filter((run) => !existingIds.has(run.id)).length;
+
+  writeRuns(merged);
+
+  return {
+    added,
+    replaced: 0,
+    total: merged.length
+  };
+}
+
+export function importRunsPayload(payload: unknown, options?: ImportRunsOptions): ImportRunsResult {
+  const parsed = Array.isArray(payload)
+    ? payload
+    : typeof payload === "object" && payload !== null && "runs" in payload
+    ? (payload as { runs?: unknown }).runs
+    : payload;
+  return importRunsRaw(parsed, options);
+}
+
+export function importRunsJson(jsonText: string, options?: ImportRunsOptions): ImportRunsResult {
+  const parsed = JSON.parse(jsonText) as unknown;
+  return importRunsPayload(parsed, options);
 }
