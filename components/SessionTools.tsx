@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clearDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
 import { resetExperimentSessions } from "@/lib/storage/experimentSessions";
 import { clearGuidedSession } from "@/lib/storage/guidedSession";
@@ -23,7 +23,22 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const totalRuns = useMemo(() => listRuns().length, [message]);
+  const [totalRuns, setTotalRuns] = useState<number | null>(null);
+
+  useEffect(() => {
+    const refreshTotalRuns = () => {
+      setTotalRuns(listRuns().length);
+    };
+
+    refreshTotalRuns();
+    window.addEventListener("focus", refreshTotalRuns);
+    window.addEventListener("storage", refreshTotalRuns);
+
+    return () => {
+      window.removeEventListener("focus", refreshTotalRuns);
+      window.removeEventListener("storage", refreshTotalRuns);
+    };
+  }, []);
 
   return (
     <div style={{ display: "grid", gap: 8 }}>
@@ -44,6 +59,7 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           const removedSnapshots = clearDecisionSnapshots();
           resetExperimentSessions();
           clearGuidedSession();
+          setTotalRuns(listRuns().length);
           onChanged?.();
           setMessage(
             `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"}, ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}, and reset experiment sessions.`
@@ -100,6 +116,7 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           try {
             const text = await file.text();
             const result = importRunsJson(text, { replaceExisting });
+            setTotalRuns(listRuns().length);
             onChanged?.();
             setMessage(
               replaceExisting
@@ -121,7 +138,7 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
       </button>
 
       <p className="muted" style={{ margin: 0 }}>
-        Total saved runs: {totalRuns}
+        Total saved runs: {totalRuns === null ? "..." : totalRuns}
       </p>
       {message ? <p className="muted" style={{ margin: 0 }}>{message}</p> : null}
     </div>

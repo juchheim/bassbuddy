@@ -123,7 +123,7 @@ export default function HomePage() {
   }, [activeSessionId, refreshTick]);
   const sessionReport = useMemo(() => buildDecisionReport(sessionRuns), [sessionRuns]);
   const sessionSnapshots = useMemo(
-    () => listDecisionSnapshots(activeSessionId || undefined),
+    () => (activeSessionId ? listDecisionSnapshots(activeSessionId) : []),
     [activeSessionId, refreshTick]
   );
   const confidenceTrend = useMemo(() => {
