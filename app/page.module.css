@@ -11,68 +11,27 @@
   color: var(--muted);
 }
 
-.setupStatus {
+.startPanel {
   margin-top: 10px;
-}
-
-.sessionPanel {
-  margin-top: 12px;
-}
-
-.sessionControls {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
-.archivedPanel {
-  display: grid;
-  gap: 8px;
-}
-
-.archivedList {
+.sectionTitle {
   margin: 0;
-  padding-left: 0;
-  list-style: none;
-  display: grid;
-  gap: 8px;
 }
 
-.archivedItem {
-  display: grid;
-  gap: 6px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  padding: 8px;
-}
-
-.summaryPanel {
-  margin-top: 12px;
-}
-
-.quickActions {
-  display: grid;
-  gap: 8px;
-}
-
-.lockTimelinePanel {
-  display: grid;
-  gap: 6px;
-}
-
-.lockTimelineList {
-  list-style: none;
+.steps {
   margin: 0;
-  padding: 0;
+  padding-left: 18px;
+  color: var(--muted);
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
-.lockTimelineItem {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel-soft);
-  padding: 8px;
+.quickLinks {
+  display: grid;
+  gap: 8px;
 }
 
 .disclaimer {
@@ -81,11 +40,13 @@
 }
 
 .list {
-  margin: 10px 0 0;
+  margin: 0;
   padding-left: 18px;
   color: var(--muted);
 }
 
-.sectionTitle {
-  margin: 0 0 8px;
+@media (min-width: 760px) {
+  .quickLinks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

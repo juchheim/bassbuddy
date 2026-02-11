@@ -6,9 +6,8 @@ This MVP is intentionally relative and decision-focused:
 - Measure one run quickly.
 - Compare A vs B placements.
 - Compare phase 0 vs 180.
-- Compare A vs B as a compromise across multiple seats.
-- Scout and rank 4-8 candidate placements before final A/B.
 - Get a clear winner with plain-English guidance.
+- Keep day-to-day flow simple; advanced workflows live under `/advanced`.
 
 ## What This MVP Does
 - Requests microphone input with processing disabled when possible (`echoCancellation`, `noiseSuppression`, `autoGainControl` set false).
@@ -27,6 +26,7 @@ This MVP is intentionally relative and decision-focused:
 - Supports named experiment sessions; new runs and decision snapshots attach to the active session.
 - Supports session-scoped winner lock-in (placement + phase + notes) so you can persist a chosen baseline.
 - Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
+- Home focuses on three primary flows: Baseline, A/B, and Phase.
 
 ## What It Does Not Do
 - No precise PEQ filter generation.
@@ -102,8 +102,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - Baseline
    - A/B placement compare
    - Phase compare
-   - Multi-seat compromise compare
-   - Placement scout (4-8 candidate locations)
+   - Open Advanced Tools for multi-seat/scout workflows
 3. In Setup:
    - Complete checklist + mic level check on first-time setup
    - Use \"Run Full Setup Again\" only when needed on returning sessions
@@ -121,24 +120,17 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - In scout mode, labels are `Scout Location N` and fill guided scout progress
    - If guided session is active, continue to next guided step from Results
 6. In Compare:
-   - Compare is scoped to the active experiment session
-   - Choose single-run compare or repeatability mode
-   - In repeatability mode, pick two labels with 2-3 runs per side
-   - In multi-seat mode, capture A/B for Center/Left/Right and compare compromise score
-   - In scout mode, review ranked candidates and promote top 2 into guided A/B seat compare
-   - Review overlay + quality/repeatability gates + winner recommendation
-   - Optionally lock placement/phase winners with notes as the current session baseline
-7. In Final Decision Assistant:
+   - Use simple compare for baseline/A-B/phase runs
+   - Pick two runs and read the winner recommendation
+7. In Advanced Tools:
+   - Use advanced compare, guided workflows, session management, and backup controls
+8. In Final Decision Assistant:
    - Select/create/rename experiment sessions (for longitudinal tracking)
    - Review unified placement + phase recommendation with confidence tier
    - Lock current winners as the active baseline for this session
    - Save decision snapshots and compare against current recommendations over time
    - Export one-click decision report JSON
    - Print a concise decision summary
-8. In Session Tools (Home):
-   - Export a full local backup bundle before major experiments
-   - Import bundle in merge mode to append prior sessions
-   - Import bundle in replace mode to restore an entire saved state
 
 ## Practical Use Notes
 - These are **relative** results, not calibrated SPL.

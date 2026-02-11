@@ -3,383 +3,88 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ModeCard } from "@/components/ModeCard";
-import { SessionTools } from "@/components/SessionTools";
-import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
-import { listDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
-import {
-  archiveExperimentSession,
-  createExperimentSession,
-  getActiveExperimentSessionId,
-  listExperimentSessions,
-  restoreExperimentSession,
-  setActiveExperimentSession,
-  type ExperimentSession
-} from "@/lib/storage/experimentSessions";
 import { listRuns } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
-import { getWinnerLock, listWinnerLockHistory } from "@/lib/storage/winnerLock";
 import type { RunMode } from "@/lib/types";
-import { buildDecisionReport, compareDecisionReports } from "@/lib/utils/decisionAssistant";
 import styles from "@/app/page.module.css";
 
-function startHref(mode: RunMode, setupCompleted: boolean): string {
-  if (setupCompleted) {
-    return `/record?mode=${mode}`;
-  }
+interface RunCounts {
+  baseline: number;
+  ab: number;
+  phase: number;
+  total: number;
+}
 
-  return `/setup?mode=${mode}`;
+function startHref(mode: RunMode, setupCompleted: boolean): string {
+  return setupCompleted ? `/record?mode=${mode}` : `/setup?mode=${mode}`;
+}
+
+function readCounts(): RunCounts {
+  return {
+    baseline: listRuns("baseline").length,
+    ab: listRuns("ab").length,
+    phase: listRuns("phase").length,
+    total: listRuns().length
+  };
 }
 
 export default function HomePage() {
   const [setupCompleted, setSetupCompleted] = useState(false);
-  const [prefsLoaded, setPrefsLoaded] = useState(false);
-  const [sessions, setSessions] = useState<ExperimentSession[]>([]);
-  const [archivedSessions, setArchivedSessions] = useState<ExperimentSession[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState("");
-  const [refreshTick, setRefreshTick] = useState(0);
-  const [showArchived, setShowArchived] = useState(false);
-  const [sessionMessage, setSessionMessage] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [counts, setCounts] = useState<RunCounts>({ baseline: 0, ab: 0, phase: 0, total: 0 });
 
   useEffect(() => {
-    setSetupCompleted(hasCompletedSetup());
-    setPrefsLoaded(true);
-
-    const availableSessions = listExperimentSessions();
-    const hiddenSessions = listExperimentSessions({ archivedOnly: true });
-    setSessions(availableSessions);
-    setArchivedSessions(hiddenSessions);
-
-    if (!availableSessions.length) {
-      setActiveSessionId("");
-      return;
-    }
-
-    const currentActive = getActiveExperimentSessionId();
-    const resolvedSessionId = availableSessions.some((session) => session.id === currentActive)
-      ? currentActive
-      : availableSessions[0].id;
-
-    setActiveExperimentSession(resolvedSessionId);
-    setActiveSessionId(resolvedSessionId);
-  }, [refreshTick]);
-
-  useEffect(() => {
-    const handleRefresh = () => setRefreshTick((value) => value + 1);
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        handleRefresh();
-      }
+    const refresh = () => {
+      setSetupCompleted(hasCompletedSetup());
+      setCounts(readCounts());
+      setReady(true);
     };
 
-    window.addEventListener("focus", handleRefresh);
-    window.addEventListener("storage", handleRefresh);
-    document.addEventListener("visibilitychange", handleVisibility);
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
 
     return () => {
-      window.removeEventListener("focus", handleRefresh);
-      window.removeEventListener("storage", handleRefresh);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
     };
   }, []);
 
-  const statusText = useMemo(() => {
-    if (!prefsLoaded) {
+  const setupText = useMemo(() => {
+    if (!ready) {
       return "Checking setup status...";
     }
 
     return setupCompleted
-      ? "Quick Start enabled: checklist + mic check already completed on this device."
-      : "First-time setup required: complete checklist + mic check once to unlock Quick Start.";
-  }, [prefsLoaded, setupCompleted]);
+      ? "Quick Start ready on this device."
+      : "First-time setup required once (checklist + mic check).";
+  }, [ready, setupCompleted]);
 
-  const activeSession = useMemo(
-    () => sessions.find((session) => session.id === activeSessionId) ?? null,
-    [activeSessionId, sessions]
-  );
-  const sessionRuns = useMemo(
-    () => (activeSessionId ? listRuns(undefined, activeSessionId) : []),
-    [activeSessionId, refreshTick]
-  );
-
-  const runCounts = useMemo(() => {
-    if (!activeSessionId) {
-      return {
-        baseline: 0,
-        ab: 0,
-        phase: 0,
-        multiseat: 0,
-        scout: 0,
-        total: 0
-      };
-    }
-
-    return {
-      baseline: listRuns("baseline", activeSessionId).length,
-      ab: listRuns("ab", activeSessionId).length,
-      phase: listRuns("phase", activeSessionId).length,
-      multiseat: listRuns("multiseat", activeSessionId).length,
-      scout: listRuns("scout", activeSessionId).length,
-      total: listRuns(undefined, activeSessionId).length
-    };
-  }, [activeSessionId, refreshTick]);
-  const sessionReport = useMemo(() => buildDecisionReport(sessionRuns), [sessionRuns]);
-  const sessionWinnerLock = useMemo(
-    () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
-    [activeSessionId, refreshTick]
-  );
-  const recentLockHistory = useMemo(
-    () => (activeSessionId ? listWinnerLockHistory(activeSessionId).slice(0, 3) : []),
-    [activeSessionId, refreshTick]
-  );
-  const sessionSnapshots = useMemo(
-    () => (activeSessionId ? listDecisionSnapshots(activeSessionId) : []),
-    [activeSessionId, refreshTick]
-  );
-  const confidenceTrend = useMemo(() => {
-    if (!sessionSnapshots.length) {
-      return {
-        direction: "flat" as const,
-        text: "No decision snapshots yet. Save one in Decision Assistant to track trend."
-      };
-    }
-
-    if (sessionSnapshots.length >= 2) {
-      const latest = sessionSnapshots[0];
-      const previous = sessionSnapshots[1];
-      const delta = compareDecisionReports(previous.report, latest.report);
-      const direction = delta.overallScoreDelta > 1 ? "up" : delta.overallScoreDelta < -1 ? "down" : "flat";
-
-      return {
-        direction,
-        text: `Latest snapshot trend: ${delta.overallScoreDelta >= 0 ? "+" : ""}${delta.overallScoreDelta.toFixed(1)} points vs previous snapshot.`
-      };
-    }
-
-    const baseline = sessionSnapshots[0];
-    const delta = compareDecisionReports(baseline.report, sessionReport);
-    const direction = delta.overallScoreDelta > 1 ? "up" : delta.overallScoreDelta < -1 ? "down" : "flat";
-
-    return {
-      direction,
-      text: `Current report vs latest snapshot: ${delta.overallScoreDelta >= 0 ? "+" : ""}${delta.overallScoreDelta.toFixed(1)} points.`
-    };
-  }, [sessionReport, sessionSnapshots]);
-
-  const compareHref = useMemo(() => {
-    const params = new URLSearchParams({ mode: "ab" });
-
-    if (activeSessionId) {
-      params.set("session", activeSessionId);
-    }
-
-    return `/compare?${params.toString()}`;
-  }, [activeSessionId]);
-
-  const runCountLabel = (count: number) => `${count} run${count === 1 ? "" : "s"} in active session`;
+  const runCountLabel = (count: number) => `${count} saved run${count === 1 ? "" : "s"}`;
 
   return (
     <main className="pageContainer">
       <header className={styles.header}>
-        <h1 className={styles.pageTitle}>Sub Placement Coach</h1>
-        <p className={styles.subtitle}>
-          Fast, repeatable relative bass checks using your phone or laptop microphone.
-        </p>
+        <h1 className={styles.pageTitle}>BassBuddy (MVP)</h1>
+        <p className={styles.subtitle}>Simple sub-placement decisions from your phone/laptop mic.</p>
       </header>
 
-      <section className={`panel ${styles.setupStatus}`}>
-        <h2 className={styles.sectionTitle}>Setup Status</h2>
-        <p className="muted">{statusText}</p>
-        <div className={styles.quickActions}>
-          <Link href="/setup?mode=baseline" className="cta ctaSecondary" style={{ textAlign: "center" }}>
-            Run Setup Checks
-          </Link>
+      <section className={`panel ${styles.startPanel}`}>
+        <h2 className={styles.sectionTitle}>Start Here</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          {setupText}
+        </p>
+        <ol className={styles.steps}>
+          <li>Put the mic at the listening seat.</li>
+          <li>Play the test track on your main system.</li>
+          <li>Record two options and let BassBuddy pick a winner.</li>
+        </ol>
+        <div className={styles.quickLinks}>
           <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
             Open Test Track
           </Link>
-        </div>
-      </section>
-
-      <section className={`panel ${styles.sessionPanel}`}>
-        <h2 className={styles.sectionTitle}>Active Experiment Session</h2>
-        <p className="muted">
-          Home, compare, and decision views now focus on one experiment session at a time.
-        </p>
-        <div className={styles.sessionControls}>
-          <label>
-            Session
-            <select
-              value={activeSessionId}
-              onChange={(event) => {
-                const nextSessionId = event.target.value;
-
-                if (!setActiveExperimentSession(nextSessionId)) {
-                  return;
-                }
-
-                setActiveSessionId(nextSessionId);
-                setSessionMessage("Switched active experiment session.");
-                setRefreshTick((value) => value + 1);
-              }}
-            >
-              {sessions.map((session) => (
-                <option value={session.id} key={session.id}>
-                  {session.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className="cta ctaSecondary"
-            onClick={() => {
-              const created = createExperimentSession("");
-              setSessionMessage(`Created and switched to "${created.name}".`);
-              setRefreshTick((value) => value + 1);
-            }}
-          >
-            New Session
-          </button>
-          <button
-            type="button"
-            className="cta ctaSecondary"
-            disabled={!activeSession || activeSession.id === DEFAULT_EXPERIMENT_SESSION_ID}
-            onClick={() => {
-              if (!activeSession) {
-                return;
-              }
-
-              const scopedRuns = listRuns(undefined, activeSession.id).length;
-              const confirmed = window.confirm(
-                `Archive "${activeSession.name}"? This hides it from selectors but keeps ${scopedRuns} saved run${scopedRuns === 1 ? "" : "s"}.`
-              );
-
-              if (!confirmed) {
-                return;
-              }
-
-              const archived = archiveExperimentSession(activeSession.id);
-
-              if (!archived) {
-                setSessionMessage("Unable to archive this session.");
-                return;
-              }
-
-              const nextName =
-                listExperimentSessions().find((session) => session.id === archived.nextActiveSessionId)?.name ??
-                "another session";
-              setSessionMessage(`Archived "${activeSession.name}". Active session switched to "${nextName}".`);
-              setRefreshTick((value) => value + 1);
-            }}
-          >
-            Archive Session
-          </button>
-        </div>
-        <p className="muted">
-          Active session: <strong>{activeSession?.name ?? "Not selected"}</strong> ({runCountLabel(runCounts.total)}).
-        </p>
-        {activeSession?.id === DEFAULT_EXPERIMENT_SESSION_ID ? (
-          <p className="muted">Default Session cannot be archived.</p>
-        ) : null}
-        {archivedSessions.length ? (
-          <div className={styles.archivedPanel}>
-            <button
-              type="button"
-              className="cta ctaSecondary"
-              onClick={() => setShowArchived((value) => !value)}
-            >
-              {showArchived ? "Hide Archived Sessions" : `Show Archived Sessions (${archivedSessions.length})`}
-            </button>
-            {showArchived ? (
-              <ul className={styles.archivedList}>
-                {archivedSessions.map((session) => (
-                  <li key={session.id} className={styles.archivedItem}>
-                    <span className="muted">{session.name}</span>
-                    <button
-                      type="button"
-                      className="cta ctaSecondary"
-                      onClick={() => {
-                        const restored = restoreExperimentSession(session.id);
-
-                        if (!restored) {
-                          setSessionMessage("Unable to restore archived session.");
-                          return;
-                        }
-
-                        setSessionMessage(`Restored "${restored.name}".`);
-                        setRefreshTick((value) => value + 1);
-                      }}
-                    >
-                      Restore
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        ) : null}
-        {sessionMessage ? <p className="muted">{sessionMessage}</p> : null}
-      </section>
-
-      <section className={`panel ${styles.summaryPanel}`}>
-        <h2 className={styles.sectionTitle}>Session Summary</h2>
-        <p className="muted">
-          Locked placement baseline: <strong>{sessionWinnerLock?.placementWinner ?? "Not locked"}</strong>
-        </p>
-        <p className="muted">
-          Locked phase baseline: <strong>{sessionWinnerLock?.phaseWinner ?? "Not locked"}</strong>
-        </p>
-        {sessionWinnerLock ? (
-          <p className="muted">Locked at: {new Date(sessionWinnerLock.updatedAt).toLocaleString()}</p>
-        ) : (
-          <p className="muted">No baseline lock yet. Lock winners from Compare or Decision.</p>
-        )}
-        {sessionWinnerLock?.notes ? <p className="muted">Lock notes: {sessionWinnerLock.notes}</p> : null}
-        {recentLockHistory.length ? (
-          <div className={styles.lockTimelinePanel}>
-            <p className="muted" style={{ margin: 0 }}>
-              Recent lock timeline:
-            </p>
-            <ul className={styles.lockTimelineList}>
-              {recentLockHistory.map((entry) => (
-                <li key={entry.id} className={styles.lockTimelineItem}>
-                  <p className="muted" style={{ margin: 0 }}>
-                    <strong>{new Date(entry.createdAt).toLocaleString()}</strong> |{" "}
-                    {entry.source === "compare" ? "Compare" : "Decision"}
-                  </p>
-                  <p className="muted" style={{ margin: 0 }}>
-                    {entry.placementWinner ?? "No placement"} | {entry.phaseWinner ?? "No phase"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <p className="muted">
-          Best A/B result: <strong>{sessionReport.placement.winner ?? "No winner yet"}</strong>
-        </p>
-        <p className="muted">
-          Best phase result: <strong>{sessionReport.phase.winner ?? "No winner yet"}</strong>
-        </p>
-        <p
-          className={
-            confidenceTrend.direction === "up"
-              ? "ok"
-              : confidenceTrend.direction === "down"
-              ? "warning"
-              : "muted"
-          }
-        >
-          Confidence trend: {confidenceTrend.text}
-        </p>
-        <p className="muted">
-          Current confidence: {sessionReport.overallConfidence.toUpperCase()} ({sessionReport.overallScore}/100)
-        </p>
-        <div className={styles.quickActions}>
-          <Link href="/decision" className="cta ctaSecondary" style={{ textAlign: "center" }}>
-            Open Decision Assistant
-          </Link>
-          <Link href={compareHref} className="cta ctaSecondary" style={{ textAlign: "center" }}>
-            Open Compare
+          <Link href="/advanced" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Advanced Tools
           </Link>
         </div>
       </section>
@@ -387,74 +92,41 @@ export default function HomePage() {
       <section className="grid two" style={{ marginTop: 12 }}>
         <ModeCard
           title="Quick Baseline Measurement"
-          description="Capture one run at your seat and see the response curve + smoothness score."
+          description="Capture one run and review bass smoothness at the seat."
           href={startHref("baseline", setupCompleted)}
           cta={setupCompleted ? "Start Baseline" : "Open Setup"}
-          meta={runCountLabel(runCounts.baseline)}
+          meta={runCountLabel(counts.baseline)}
         />
         <ModeCard
           title="Compare Two Placements (A/B)"
-          description="Measure placement A and B, then get a clear winner based on smoothness and dips."
+          description="Measure placement A and B, then get a clear winner."
           href={startHref("ab", setupCompleted)}
           cta={setupCompleted ? "Start A/B" : "Open Setup"}
-          meta={runCountLabel(runCounts.ab)}
+          meta={runCountLabel(counts.ab)}
         />
         <ModeCard
           title="Phase Test (0 vs 180)"
-          description="Measure with phase switch at 0° and 180° and choose the better setting."
+          description="Measure both phase settings and keep the better one."
           href={startHref("phase", setupCompleted)}
           cta={setupCompleted ? "Start Phase Test" : "Open Setup"}
-          meta={runCountLabel(runCounts.phase)}
+          meta={runCountLabel(counts.phase)}
         />
         <ModeCard
-          title="Multi-Seat Compromise (A/B)"
-          description="Measure center/left/right seats for A and B, then pick the better compromise."
-          href={startHref("multiseat", setupCompleted)}
-          cta={setupCompleted ? "Start Multi-Seat" : "Open Setup"}
-          meta={runCountLabel(runCounts.multiseat)}
-        />
-        <ModeCard
-          title="Placement Scout (4-8 Candidates)"
-          description="Measure several candidate sub locations, auto-rank them, then promote the top two into A/B."
-          href={startHref("scout", setupCompleted)}
-          cta={setupCompleted ? "Start Placement Scout" : "Open Setup"}
-          meta={runCountLabel(runCounts.scout)}
-        />
-        <ModeCard
-          title="Review Saved Runs"
-          description="Open compare view to overlay existing runs and re-check decisions."
-          href={compareHref}
+          title="Review Recent Compare"
+          description="Open simple compare for your latest A/B or phase runs."
+          href="/compare?mode=ab"
           cta="Open Compare"
-          meta={runCountLabel(runCounts.total)}
-        />
-        <ModeCard
-          title="Final Decision Assistant"
-          description="Combine all evidence into one recommendation with confidence and next actions."
-          href="/decision"
-          cta="Open Decision Assistant"
-          meta={`${runCounts.total} run${runCounts.total === 1 ? "" : "s"} available for decision evidence.`}
+          meta={`${counts.total} total saved run${counts.total === 1 ? "" : "s"}`}
         />
       </section>
 
       <section className={`panel ${styles.disclaimer}`}>
-        <h2 className={styles.sectionTitle}>How It Works</h2>
-        <p className="muted">
-          Play the SubSpot test track on your main system while this app listens at the seat mic. SubSpot aligns
-          to the sync beep, measures each bass tone step, then shows relative dB smoothness.
-        </p>
+        <h2 className={styles.sectionTitle}>Important Notes</h2>
         <ul className={styles.list}>
-          <li>Relative measurement only: not calibrated SPL.</li>
-          <li>Keep playback volume and mic position identical between runs.</li>
-          <li>Consumer mic processing can affect results even when we request it off.</li>
+          <li>Relative measurement only, not calibrated SPL.</li>
+          <li>Keep volume and mic position fixed between runs.</li>
+          <li>Phone/laptop mic processing may still affect results.</li>
         </ul>
-      </section>
-
-      <section className="panel" style={{ marginTop: 12 }}>
-        <h2 className={styles.sectionTitle}>Session Tools</h2>
-        <p className="muted">
-          Start fresh, export a full JSON backup bundle, or import a saved bundle (merge or replace all local data).
-        </p>
-        <SessionTools onChanged={() => setRefreshTick((value) => value + 1)} />
       </section>
     </main>
   );

@@ -8,7 +8,7 @@ export default function TestTrackPage() {
 
       <section className="panel">
         <p className={styles.info}>
-          Play this track on your main system while SubSpot records from your seat mic device. Keep playback volume
+          Play this track on your main system while BassBuddy records from your seat mic device. Keep playback volume
           fixed for all comparisons.
         </p>
 
