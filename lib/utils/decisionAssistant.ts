@@ -43,6 +43,13 @@ export interface DecisionReport {
   };
 }
 
+export interface DecisionReportDelta {
+  overallScoreDelta: number;
+  overallConfidenceChanged: boolean;
+  placementWinnerChanged: boolean;
+  phaseWinnerChanged: boolean;
+}
+
 type PairSide = "left" | "right";
 
 interface PairDecisionInput {
@@ -81,10 +88,6 @@ function confidenceTierFromScore(score: number): ConfidenceTier {
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter((entry) => entry.trim().length > 0)));
-}
-
-function labelOrFallback(run: BassRun, fallback: string): string {
-  return run.label?.trim() || fallback;
 }
 
 function parsePlacementSide(label: string | undefined): PairSide | null {
@@ -569,3 +572,14 @@ export function reportPrintText(report: DecisionReport): string {
   return lines.join("\n");
 }
 
+export function compareDecisionReports(
+  previous: DecisionReport,
+  current: DecisionReport
+): DecisionReportDelta {
+  return {
+    overallScoreDelta: current.overallScore - previous.overallScore,
+    overallConfidenceChanged: current.overallConfidence !== previous.overallConfidence,
+    placementWinnerChanged: current.placement.winner !== previous.placement.winner,
+    phaseWinnerChanged: current.phase.winner !== previous.phase.winner
+  };
+}

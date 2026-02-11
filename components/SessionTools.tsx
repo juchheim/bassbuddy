@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { clearDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
 import { clearGuidedSession } from "@/lib/storage/guidedSession";
 import { clearRuns, exportRunsPayload, importRunsJson, listRuns } from "@/lib/storage/runsStore";
 
@@ -27,7 +28,7 @@ export function SessionTools() {
         onClick={() => {
           const runCount = listRuns().length;
           const confirmed = window.confirm(
-            `Start a fresh session? This deletes ${runCount} saved run${runCount === 1 ? "" : "s"} and clears guided progress.`
+            `Start a fresh session? This deletes ${runCount} saved run${runCount === 1 ? "" : "s"}, clears guided progress, and clears decision snapshots.`
           );
 
           if (!confirmed) {
@@ -35,8 +36,11 @@ export function SessionTools() {
           }
 
           const removed = clearRuns();
+          const removedSnapshots = clearDecisionSnapshots();
           clearGuidedSession();
-          setMessage(`Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"}.`);
+          setMessage(
+            `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"} and ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}.`
+          );
         }}
       >
         Start Fresh Session
@@ -115,4 +119,3 @@ export function SessionTools() {
     </div>
   );
 }
-

@@ -82,9 +82,39 @@
   color: var(--muted);
 }
 
+.snapshotPanel {
+  display: grid;
+  gap: 10px;
+}
+
+.snapshotControls {
+  display: grid;
+  gap: 8px;
+}
+
+.snapshotCard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.deltaPositive {
+  color: var(--ok);
+}
+
+.deltaNegative {
+  color: var(--danger);
+}
+
 @media (min-width: 760px) {
   .actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
 
+  .snapshotControls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

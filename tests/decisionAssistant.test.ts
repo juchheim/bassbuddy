@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { multiSeatLabel } from "@/lib/constants/multiSeat";
 import type { BassRun, RunMode } from "@/lib/types";
-import { buildDecisionReport, reportPrintText } from "@/lib/utils/decisionAssistant";
+import { buildDecisionReport, compareDecisionReports, reportPrintText } from "@/lib/utils/decisionAssistant";
 
 function makeRun(params: {
   id: string;
@@ -121,3 +121,21 @@ describe("reportPrintText", () => {
   });
 });
 
+describe("compareDecisionReports", () => {
+  it("captures winner/confidence changes and score delta", () => {
+    const previous = buildDecisionReport([
+      makeRun({ id: "prev-a", mode: "ab", label: "Placement A", score: 10 }),
+      makeRun({ id: "prev-b", mode: "ab", label: "Placement B", score: 25 })
+    ]);
+
+    const current = buildDecisionReport([
+      makeRun({ id: "curr-a", mode: "ab", label: "Placement A", score: 25 }),
+      makeRun({ id: "curr-b", mode: "ab", label: "Placement B", score: 9 })
+    ]);
+
+    const delta = compareDecisionReports(previous, current);
+
+    expect(delta.placementWinnerChanged).toBe(true);
+    expect(Number.isFinite(delta.overallScoreDelta)).toBe(true);
+  });
+});

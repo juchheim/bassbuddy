@@ -1,9 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { buildDecisionReport, reportPrintText, type ConfidenceTier } from "@/lib/utils/decisionAssistant";
+import { useEffect, useMemo, useState } from "react";
+import {
+  clearDecisionSnapshots,
+  deleteDecisionSnapshot,
+  listDecisionSnapshots,
+  saveDecisionSnapshot
+} from "@/lib/storage/decisionSnapshots";
 import { exportRunsPayload, listRuns } from "@/lib/storage/runsStore";
+import {
+  buildDecisionReport,
+  compareDecisionReports,
+  reportPrintText,
+  type ConfidenceTier
+} from "@/lib/utils/decisionAssistant";
 import styles from "@/app/decision/decision.module.css";
 
 function confidenceClass(tier: ConfidenceTier): string {
@@ -74,11 +85,44 @@ function printSummary(title: string, text: string): void {
   popup.print();
 }
 
+function formatDelta(value: number): string {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}`;
+}
+
 export default function DecisionPage() {
   const [refreshTick, setRefreshTick] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [snapshotLabel, setSnapshotLabel] = useState("");
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState("");
+
   const runs = useMemo(() => listRuns(), [refreshTick]);
   const report = useMemo(() => buildDecisionReport(runs), [runs]);
+  const snapshots = useMemo(() => listDecisionSnapshots(), [refreshTick]);
+
+  useEffect(() => {
+    if (!snapshots.length) {
+      setSelectedSnapshotId("");
+      return;
+    }
+
+    if (!selectedSnapshotId || !snapshots.some((entry) => entry.id === selectedSnapshotId)) {
+      setSelectedSnapshotId(snapshots[0].id);
+    }
+  }, [selectedSnapshotId, snapshots]);
+
+  const selectedSnapshot = useMemo(
+    () => snapshots.find((entry) => entry.id === selectedSnapshotId) ?? null,
+    [selectedSnapshotId, snapshots]
+  );
+
+  const snapshotDelta = useMemo(() => {
+    if (!selectedSnapshot) {
+      return null;
+    }
+
+    return compareDecisionReports(selectedSnapshot.report, report);
+  }, [report, selectedSnapshot]);
 
   return (
     <main className="pageContainer">
@@ -99,6 +143,9 @@ export default function DecisionPage() {
         <p className={styles.meta}>{report.summary}</p>
         <p className={styles.meta}>
           Generated from {runs.length} saved run{runs.length === 1 ? "" : "s"}.
+        </p>
+        <p className={styles.meta}>
+          Decision snapshots saved: {snapshots.length}
         </p>
         {report.scout.candidateCount > 0 ? (
           <p className={styles.meta}>
@@ -150,6 +197,137 @@ export default function DecisionPage() {
         <Link href="/compare" className="cta ctaSecondary" style={{ textAlign: "center" }}>
           Open Compare
         </Link>
+      </section>
+
+      <section className={`panel ${styles.snapshotPanel}`} style={{ marginTop: 12 }}>
+        <h2 style={{ margin: 0 }}>Decision Snapshots</h2>
+        <p className={styles.meta}>Save checkpoints and compare recommendation changes over time.</p>
+
+        <div className={styles.snapshotControls}>
+          <label>
+            Snapshot label (optional)
+            <input
+              type="text"
+              value={snapshotLabel}
+              placeholder="e.g. After moving sub 1 ft"
+              onChange={(event) => setSnapshotLabel(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="cta ctaSecondary"
+            onClick={() => {
+              const snapshot = saveDecisionSnapshot(report, runs.length, snapshotLabel);
+              setSnapshotLabel("");
+              setSelectedSnapshotId(snapshot.id);
+              setRefreshTick((value) => value + 1);
+              setMessage("Saved decision snapshot.");
+            }}
+          >
+            Save Snapshot
+          </button>
+        </div>
+
+        {snapshots.length ? (
+          <>
+            <label>
+              Saved snapshots
+              <select value={selectedSnapshotId} onChange={(event) => setSelectedSnapshotId(event.target.value)}>
+                {snapshots.map((snapshot) => (
+                  <option key={snapshot.id} value={snapshot.id}>
+                    {new Date(snapshot.createdAt).toLocaleString()} {snapshot.label ? `- ${snapshot.label}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedSnapshot ? (
+              <article className={styles.snapshotCard}>
+                <p className={styles.evidenceTitle}>Snapshot Details</p>
+                <p className={styles.meta}>Date: {new Date(selectedSnapshot.createdAt).toLocaleString()}</p>
+                {selectedSnapshot.label ? <p className={styles.meta}>Label: {selectedSnapshot.label}</p> : null}
+                <p className={styles.meta}>
+                  Overall: {selectedSnapshot.report.overallConfidence.toUpperCase()} ({selectedSnapshot.report.overallScore}/100)
+                </p>
+                <p className={styles.meta}>
+                  Placement winner: {selectedSnapshot.report.placement.winner ?? "No winner"} | Phase winner: {" "}
+                  {selectedSnapshot.report.phase.winner ?? "No winner"}
+                </p>
+                {snapshotDelta ? (
+                  <>
+                    <p className={styles.meta}>
+                      Current vs snapshot score delta:{" "}
+                      <strong
+                        className={
+                          snapshotDelta.overallScoreDelta >= 0 ? styles.deltaPositive : styles.deltaNegative
+                        }
+                      >
+                        {formatDelta(snapshotDelta.overallScoreDelta)}
+                      </strong>
+                    </p>
+                    <p className={styles.meta}>
+                      Confidence changed: {snapshotDelta.overallConfidenceChanged ? "Yes" : "No"} | Placement changed:{" "}
+                      {snapshotDelta.placementWinnerChanged ? "Yes" : "No"} | Phase changed:{" "}
+                      {snapshotDelta.phaseWinnerChanged ? "Yes" : "No"}
+                    </p>
+                  </>
+                ) : null}
+                <div className={styles.snapshotControls}>
+                  <button
+                    type="button"
+                    className="cta ctaSecondary"
+                    onClick={() => {
+                      downloadJson(`${filenameBase()}-snapshot.json`, {
+                        type: "bassbuddy.decision-snapshot.v1",
+                        snapshot: selectedSnapshot,
+                        currentReport: report
+                      });
+                      setMessage("Exported selected snapshot JSON.");
+                    }}
+                  >
+                    Export Selected Snapshot
+                  </button>
+                  <button
+                    type="button"
+                    className="cta ctaDanger"
+                    onClick={() => {
+                      if (!window.confirm("Delete selected decision snapshot?")) {
+                        return;
+                      }
+
+                      const removed = deleteDecisionSnapshot(selectedSnapshot.id);
+
+                      if (removed) {
+                        setRefreshTick((value) => value + 1);
+                        setMessage("Deleted selected snapshot.");
+                      }
+                    }}
+                  >
+                    Delete Selected Snapshot
+                  </button>
+                </div>
+              </article>
+            ) : null}
+
+            <button
+              type="button"
+              className="cta ctaDanger"
+              onClick={() => {
+                if (!window.confirm("Clear all decision snapshots?")) {
+                  return;
+                }
+
+                const removed = clearDecisionSnapshots();
+                setRefreshTick((value) => value + 1);
+                setMessage(`Cleared ${removed} decision snapshot${removed === 1 ? "" : "s"}.`);
+              }}
+            >
+              Clear All Snapshots
+            </button>
+          </>
+        ) : (
+          <p className={styles.meta}>No snapshots saved yet.</p>
+        )}
       </section>
 
       <section className={`panel ${styles.sectionPanel}`} style={{ marginTop: 12 }}>
@@ -247,4 +425,3 @@ export default function DecisionPage() {
     </main>
   );
 }
-
