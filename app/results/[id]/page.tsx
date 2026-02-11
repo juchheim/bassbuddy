@@ -15,6 +15,7 @@ import {
   isGuidedSessionComplete,
   type GuidedSessionV1
 } from "@/lib/storage/guidedSession";
+import { listExperimentSessions } from "@/lib/storage/experimentSessions";
 import { deleteRun, getRunById, listRuns, updateRun } from "@/lib/storage/runsStore";
 import type { BassRun } from "@/lib/types";
 import { modeTitle } from "@/lib/utils/mode";
@@ -43,8 +44,16 @@ export default function ResultsPage() {
       return 0;
     }
 
-    return listRuns(run.mode).length;
+    return listRuns(run.mode, run.sessionId).length;
   }, [run]);
+  const runSessionName = useMemo(() => {
+    if (!run?.sessionId) {
+      return null;
+    }
+
+    const session = listExperimentSessions().find((entry) => entry.id === run.sessionId);
+    return session?.name ?? null;
+  }, [run?.sessionId]);
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
   const nextGuidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
@@ -79,6 +88,7 @@ export default function ResultsPage() {
       <header className={styles.header}>
         <h1>Measurement Captured</h1>
         <p className="muted">Mode: {modeTitle(run.mode)}</p>
+        {runSessionName ? <p className="muted">Session: {runSessionName}</p> : null}
       </header>
 
       <section className="panel">
@@ -170,7 +180,11 @@ export default function ResultsPage() {
         )}
 
         {runCountInMode >= 2 ? (
-          <Link href={`/compare?mode=${run.mode}`} className="cta ctaSecondary" style={{ textAlign: "center" }}>
+          <Link
+            href={`/compare?mode=${run.mode}${run.sessionId ? `&session=${encodeURIComponent(run.sessionId)}` : ""}`}
+            className="cta ctaSecondary"
+            style={{ textAlign: "center" }}
+          >
             Go to Compare
           </Link>
         ) : null}
@@ -185,7 +199,9 @@ export default function ResultsPage() {
 
             const removed = deleteRun(run.id);
             if (removed) {
-              router.push(`/compare?mode=${run.mode}`);
+              router.push(
+                `/compare?mode=${run.mode}${run.sessionId ? `&session=${encodeURIComponent(run.sessionId)}` : ""}`
+              );
             }
           }}
         >

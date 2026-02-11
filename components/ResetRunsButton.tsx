@@ -6,6 +6,7 @@ import type { RunMode } from "@/lib/types";
 
 interface ResetRunsButtonProps {
   mode?: RunMode;
+  sessionId?: string;
   className?: string;
   label?: string;
   onCleared?: () => void;
@@ -35,13 +36,17 @@ function scopeLabel(mode?: RunMode): string {
   return "all baseline runs";
 }
 
-export function ResetRunsButton({ mode, className, label, onCleared }: ResetRunsButtonProps) {
+function scopeSuffix(sessionId?: string): string {
+  return sessionId ? " in the active session" : "";
+}
+
+export function ResetRunsButton({ mode, sessionId, className, label, onCleared }: ResetRunsButtonProps) {
   const [count, setCount] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setCount(listRuns(mode).length);
-  }, [mode]);
+    setCount(listRuns(mode, sessionId).length);
+  }, [mode, sessionId]);
 
   const buttonLabel = label ?? (mode ? "Start Fresh (This Mode)" : "Start Fresh (Delete All Runs)");
 
@@ -52,7 +57,7 @@ export function ResetRunsButton({ mode, className, label, onCleared }: ResetRuns
         className={className ?? "cta ctaDanger"}
         disabled={count === 0}
         onClick={() => {
-          const currentCount = listRuns(mode).length;
+          const currentCount = listRuns(mode, sessionId).length;
 
           if (currentCount === 0) {
             setMessage("No saved runs to delete.");
@@ -60,15 +65,15 @@ export function ResetRunsButton({ mode, className, label, onCleared }: ResetRuns
           }
 
           const shouldDelete = window.confirm(
-            `Delete ${scopeLabel(mode)}? This removes ${currentCount} run${currentCount === 1 ? "" : "s"} permanently.`
+            `Delete ${scopeLabel(mode)}${scopeSuffix(sessionId)}? This removes ${currentCount} run${currentCount === 1 ? "" : "s"} permanently.`
           );
 
           if (!shouldDelete) {
             return;
           }
 
-          const removed = clearRuns(mode);
-          setCount(listRuns(mode).length);
+          const removed = clearRuns(mode, sessionId);
+          setCount(listRuns(mode, sessionId).length);
           setMessage(`Deleted ${removed} run${removed === 1 ? "" : "s"}.`);
           onCleared?.();
         }}

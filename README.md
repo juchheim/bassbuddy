@@ -111,6 +111,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - In scout mode, labels are `Scout Location N` and fill guided scout progress
    - If guided session is active, continue to next guided step from Results
 6. In Compare:
+   - Compare is scoped to the active experiment session
    - Choose single-run compare or repeatability mode
    - In repeatability mode, pick two labels with 2-3 runs per side
    - In multi-seat mode, capture A/B for Center/Left/Right and compare compromise score

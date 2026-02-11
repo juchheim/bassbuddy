@@ -6,6 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { ResetRunsButton } from "@/components/ResetRunsButton";
 import { ResponseChart } from "@/components/ResponseChart";
 import { RunPicker } from "@/components/RunPicker";
+import {
+  getActiveExperimentSessionId,
+  listExperimentSessions,
+  setActiveExperimentSession,
+  type ExperimentSession
+} from "@/lib/storage/experimentSessions";
 import { startGuidedSession } from "@/lib/storage/guidedSession";
 import { deleteRun, listRuns } from "@/lib/storage/runsStore";
 import type { BassRun, RunMode } from "@/lib/types";
@@ -71,6 +77,8 @@ function recommendationText(runA: BassRun, runB: BassRun) {
 export default function ComparePage() {
   const router = useRouter();
   const [mode, setMode] = useState<RunMode>("ab");
+  const [sessions, setSessions] = useState<ExperimentSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState("");
   const [runs, setRuns] = useState<BassRun[]>([]);
   const [selectedA, setSelectedA] = useState("");
   const [selectedB, setSelectedB] = useState("");
@@ -82,6 +90,21 @@ export default function ComparePage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nextMode = normalizeMode(params.get("mode"));
+    const requestedSessionId = params.get("session");
+    const availableSessions = listExperimentSessions();
+    setSessions(availableSessions);
+
+    const fallbackSessionId = getActiveExperimentSessionId();
+    const resolvedSessionId =
+      requestedSessionId && availableSessions.some((session) => session.id === requestedSessionId)
+        ? requestedSessionId
+        : fallbackSessionId;
+
+    if (resolvedSessionId) {
+      setActiveExperimentSession(resolvedSessionId);
+      setActiveSessionId(resolvedSessionId);
+    }
+
     setMode(nextMode);
     if (nextMode === "multiseat" || nextMode === "scout") {
       setStrategy("single");
@@ -92,14 +115,14 @@ export default function ComparePage() {
   }, []);
 
   useEffect(() => {
-    const nextRuns = listRuns(mode);
+    const nextRuns = listRuns(mode, activeSessionId || undefined);
     setRuns(nextRuns);
 
     const first = nextRuns[0]?.id ?? "";
     const second = nextRuns[1]?.id ?? first;
     setSelectedA(first);
     setSelectedB(second);
-  }, [mode]);
+  }, [activeSessionId, mode]);
 
   useEffect(() => {
     if (mode === "multiseat" || mode === "scout") {
@@ -114,6 +137,10 @@ export default function ComparePage() {
 
   const runA = useMemo(() => runs.find((run) => run.id === selectedA), [runs, selectedA]);
   const runB = useMemo(() => runs.find((run) => run.id === selectedB), [runs, selectedB]);
+  const activeSession = useMemo(
+    () => sessions.find((session) => session.id === activeSessionId) ?? null,
+    [activeSessionId, sessions]
+  );
 
   const groups = useMemo(() => groupRunsByLabel(runs), [runs]);
 
@@ -288,6 +315,32 @@ export default function ComparePage() {
 
       <section className={`panel ${styles.controls}`}>
         <label>
+          Experiment session
+          <select
+            value={activeSessionId}
+            onChange={(event) => {
+              const nextSessionId = event.target.value;
+
+              if (!setActiveExperimentSession(nextSessionId)) {
+                return;
+              }
+
+              setActiveSessionId(nextSessionId);
+              setNotice("Switched active experiment session.");
+            }}
+          >
+            {sessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted">
+          Showing runs from: {activeSession?.name ?? "Active session"}
+        </p>
+
+        <label>
           Compare mode
           <select value={mode} onChange={(event) => setMode(normalizeMode(event.target.value))}>
             <option value="ab">Compare Two Placements (A/B)</option>
@@ -456,7 +509,7 @@ export default function ComparePage() {
                   const removed = deleteRun(run.id);
                   if (removed) {
                     setNotice("Deleted selected Run A.");
-                    const nextRuns = listRuns(mode);
+                    const nextRuns = listRuns(mode, activeSessionId || undefined);
                     setRuns(nextRuns);
                     setSelectedA(nextRuns[0]?.id ?? "");
                     setSelectedB(nextRuns[1]?.id ?? nextRuns[0]?.id ?? "");
@@ -485,7 +538,7 @@ export default function ComparePage() {
                   const removed = deleteRun(run.id);
                   if (removed) {
                     setNotice("Deleted selected Run B.");
-                    const nextRuns = listRuns(mode);
+                    const nextRuns = listRuns(mode, activeSessionId || undefined);
                     setRuns(nextRuns);
                     setSelectedA(nextRuns[0]?.id ?? "");
                     setSelectedB(nextRuns[1]?.id ?? nextRuns[0]?.id ?? "");
@@ -504,13 +557,14 @@ export default function ComparePage() {
 
         <ResetRunsButton
           mode={mode}
+          sessionId={activeSessionId || undefined}
           className="cta ctaDanger"
           label="Start Fresh (Delete Runs In This Mode)"
           onCleared={() => {
-            const nextRuns = listRuns(mode);
-            setRuns(nextRuns);
-            setSelectedA(nextRuns[0]?.id ?? "");
-            setSelectedB(nextRuns[1]?.id ?? nextRuns[0]?.id ?? "");
+            const nextSessionRuns = listRuns(mode, activeSessionId || undefined);
+            setRuns(nextSessionRuns);
+            setSelectedA(nextSessionRuns[0]?.id ?? "");
+            setSelectedB(nextSessionRuns[1]?.id ?? nextSessionRuns[0]?.id ?? "");
             setNotice("Deleted runs in this mode.");
           }}
         />
