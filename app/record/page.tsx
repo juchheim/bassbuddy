@@ -18,6 +18,7 @@ import {
   type GuidedSessionV1
 } from "@/lib/storage/guidedSession";
 import { getActiveExperimentSession } from "@/lib/storage/experimentSessions";
+import { getWinnerLock } from "@/lib/storage/winnerLock";
 import {
   buildToneSchedule,
   MANUAL_START_TIMEOUT_SEC,
@@ -529,6 +530,10 @@ export default function RecordPage() {
     () => (activeSessionId ? listRuns(undefined, activeSessionId).length : 0),
     [activeSessionId, sessionRefreshTick]
   );
+  const activeWinnerLock = useMemo(
+    () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
+    [activeSessionId, sessionRefreshTick]
+  );
   const recentModeRuns = sessionModeRuns.slice(0, 3);
   const compareHref = `/compare?mode=${mode}${activeSessionId ? `&session=${encodeURIComponent(activeSessionId)}` : ""}`;
 
@@ -562,6 +567,23 @@ export default function RecordPage() {
           This mode: {sessionModeRuns.length} run{sessionModeRuns.length === 1 ? "" : "s"} | Session total:{" "}
           {sessionTotalRuns} run{sessionTotalRuns === 1 ? "" : "s"}
         </p>
+        <div className={styles.lockCard}>
+          <p className="muted" style={{ margin: 0 }}>
+            Locked placement baseline: <strong>{activeWinnerLock?.placementWinner ?? "Not locked"}</strong>
+          </p>
+          <p className="muted" style={{ margin: 0 }}>
+            Locked phase baseline: <strong>{activeWinnerLock?.phaseWinner ?? "Not locked"}</strong>
+          </p>
+          {activeWinnerLock ? (
+            <p className="muted" style={{ margin: 0 }}>
+              Locked at: {new Date(activeWinnerLock.updatedAt).toLocaleString()}
+            </p>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>
+              Lock winners from Compare or Decision before final listening checks.
+            </p>
+          )}
+        </div>
         <div className={styles.sessionActions}>
           <Link href={compareHref} className="cta ctaSecondary" style={{ textAlign: "center" }}>
             Open Compare

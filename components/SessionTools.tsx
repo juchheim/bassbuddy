@@ -5,6 +5,7 @@ import { clearDecisionSnapshots } from "@/lib/storage/decisionSnapshots";
 import { resetExperimentSessions } from "@/lib/storage/experimentSessions";
 import { clearGuidedSession } from "@/lib/storage/guidedSession";
 import { exportSessionBundle, importSessionBundleJson } from "@/lib/storage/sessionBundle";
+import { clearWinnerLocks } from "@/lib/storage/winnerLock";
 import { clearRuns, listRuns } from "@/lib/storage/runsStore";
 
 interface SessionToolsProps {
@@ -58,12 +59,13 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
 
           const removed = clearRuns();
           const removedSnapshots = clearDecisionSnapshots();
+          const removedLocks = clearWinnerLocks();
           resetExperimentSessions();
           clearGuidedSession();
           setTotalRuns(listRuns().length);
           onChanged?.();
           setMessage(
-            `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"}, ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}, and reset experiment sessions.`
+            `Fresh session started. Deleted ${removed} run${removed === 1 ? "" : "s"}, ${removedSnapshots} snapshot${removedSnapshots === 1 ? "" : "s"}, ${removedLocks} lock${removedLocks === 1 ? "" : "s"}, and reset experiment sessions.`
           );
         }}
       >
@@ -85,8 +87,9 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
           const runCount = payload.runs.runs.length;
           const sessionCount = payload.experimentSessions.sessions.length;
           const snapshotCount = payload.decisionSnapshots.snapshots.length;
+          const lockCount = payload.winnerLocks.locks.length;
           setMessage(
-            `Exported full bundle: ${runCount} run${runCount === 1 ? "" : "s"}, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, ${snapshotCount} snapshot${snapshotCount === 1 ? "" : "s"}.`
+            `Exported full bundle: ${runCount} run${runCount === 1 ? "" : "s"}, ${sessionCount} session${sessionCount === 1 ? "" : "s"}, ${snapshotCount} snapshot${snapshotCount === 1 ? "" : "s"}, ${lockCount} lock${lockCount === 1 ? "" : "s"}.`
           );
         }}
       >
@@ -133,8 +136,8 @@ export function SessionTools({ onChanged }: SessionToolsProps) {
             } else {
               setMessage(
                 replaceExisting
-                  ? `Imported full bundle (replace): ${result.runs.total} runs, ${result.sessions.total} sessions, ${result.decisionSnapshots.total} snapshots.`
-                  : `Imported full bundle (merge): +${result.runs.added} runs, +${result.sessions.added} sessions, +${result.decisionSnapshots.added} snapshots.`
+                  ? `Imported full bundle (replace): ${result.runs.total} runs, ${result.sessions.total} sessions, ${result.decisionSnapshots.total} snapshots, ${result.winnerLocks.total} locks.`
+                  : `Imported full bundle (merge): +${result.runs.added} runs, +${result.sessions.added} sessions, +${result.decisionSnapshots.added} snapshots, +${result.winnerLocks.added} locks.`
               );
             }
           } catch (error) {

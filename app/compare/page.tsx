@@ -14,6 +14,7 @@ import {
 } from "@/lib/storage/experimentSessions";
 import { startGuidedSession } from "@/lib/storage/guidedSession";
 import { deleteRun, listRuns } from "@/lib/storage/runsStore";
+import { getWinnerLock, saveWinnerLock } from "@/lib/storage/winnerLock";
 import type { BassRun, RunMode } from "@/lib/types";
 import { MULTI_SEAT_ORDER, seatDisplayName } from "@/lib/constants/multiSeat";
 import { compareRuns } from "@/lib/utils/compareRuns";
@@ -31,6 +32,12 @@ import { evaluateCompareReadiness, evaluateRunGroupVolumeConsistency } from "@/l
 import styles from "@/app/compare/compare.module.css";
 
 type CompareStrategy = "single" | "repeatability";
+type LockKind = "placement" | "phase";
+
+interface LockCandidate {
+  kind: LockKind;
+  winner: string;
+}
 
 function recommendationText(runA: BassRun, runB: BassRun) {
   const decision = compareRuns(runA, runB);
@@ -86,6 +93,8 @@ export default function ComparePage() {
   const [selectedGroupB, setSelectedGroupB] = useState("");
   const [strategy, setStrategy] = useState<CompareStrategy>("single");
   const [notice, setNotice] = useState<string | null>(null);
+  const [lockNote, setLockNote] = useState("");
+  const [lockRefreshTick, setLockRefreshTick] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -140,6 +149,10 @@ export default function ComparePage() {
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) ?? null,
     [activeSessionId, sessions]
+  );
+  const activeWinnerLock = useMemo(
+    () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
+    [activeSessionId, lockRefreshTick]
   );
 
   const groups = useMemo(() => groupRunsByLabel(runs), [runs]);
@@ -257,6 +270,8 @@ export default function ComparePage() {
 
   const recommendation =
     activeRunA && activeRunB && activeRunA.id !== activeRunB.id ? recommendationText(activeRunA, activeRunB) : null;
+  const compareDecision =
+    activeRunA && activeRunB && activeRunA.id !== activeRunB.id ? compareRuns(activeRunA, activeRunB) : null;
 
   const compareReadiness =
     activeRunA && activeRunB && activeRunA.id !== activeRunB.id ? evaluateCompareReadiness(activeRunA, activeRunB) : null;
@@ -306,6 +321,47 @@ export default function ComparePage() {
       ? Boolean(multiSeatDecision)
       : Boolean(activeRunA && activeRunB && activeRunA.id !== activeRunB.id);
 
+  const lockCandidate: LockCandidate | null = useMemo(() => {
+    if (!canDeclareWinner || !activeSessionId) {
+      return null;
+    }
+
+    if (mode === "multiseat" && multiSeatDecision && multiSeatDecision.winner !== "tie") {
+      return {
+        kind: "placement",
+        winner: `Placement ${multiSeatDecision.winner}`
+      };
+    }
+
+    if (!compareDecision || !activeRunA || !activeRunB || compareDecision.winnerId === "tie") {
+      return null;
+    }
+
+    const winnerRun = compareDecision.winnerId === activeRunA.id ? activeRunA : activeRunB;
+    const fallbackLabel = winnerRun.id === activeRunA.id ? "Run A" : "Run B";
+    const winner = winnerRun.label?.trim() || fallbackLabel;
+
+    if (mode === "phase") {
+      return {
+        kind: "phase",
+        winner
+      };
+    }
+
+    if (mode === "ab") {
+      return {
+        kind: "placement",
+        winner
+      };
+    }
+
+    return null;
+  }, [activeRunA, activeRunB, activeSessionId, canDeclareWinner, compareDecision, mode, multiSeatDecision]);
+
+  useEffect(() => {
+    setLockNote(activeWinnerLock?.notes ?? "");
+  }, [activeWinnerLock?.sessionId, activeWinnerLock?.updatedAt]);
+
   return (
     <main className="pageContainer">
       <header className={styles.header}>
@@ -339,6 +395,28 @@ export default function ComparePage() {
         <p className="muted">
           Showing runs from: {activeSession?.name ?? "Active session"}
         </p>
+        {activeWinnerLock ? (
+          <div className={styles.lockSummary}>
+            <p className="muted" style={{ margin: 0 }}>
+              Locked placement baseline: <strong>{activeWinnerLock.placementWinner ?? "Not locked"}</strong>
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Locked phase baseline: <strong>{activeWinnerLock.phaseWinner ?? "Not locked"}</strong>
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              Locked at: {new Date(activeWinnerLock.updatedAt).toLocaleString()}
+            </p>
+            {activeWinnerLock.notes ? (
+              <p className="muted" style={{ margin: 0 }}>
+                Notes: {activeWinnerLock.notes}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="muted" style={{ margin: 0 }}>
+            No baseline lock saved for this session yet.
+          </p>
+        )}
 
         <label>
           Compare mode
@@ -724,6 +802,45 @@ export default function ComparePage() {
                   Winner recommendation withheld until quality and repeatability gates pass.
                 </p>
               )}
+
+              {lockCandidate ? (
+                <div className={styles.lockControls}>
+                  <label>
+                    Baseline lock notes (optional)
+                    <input
+                      type="text"
+                      value={lockNote}
+                      placeholder="e.g. Confirmed after 3 repeatability runs"
+                      onChange={(event) => setLockNote(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="cta ctaSecondary"
+                    onClick={() => {
+                      const saved = saveWinnerLock({
+                        sessionId: activeSessionId,
+                        placementWinner: lockCandidate.kind === "placement" ? lockCandidate.winner : undefined,
+                        phaseWinner: lockCandidate.kind === "phase" ? lockCandidate.winner : undefined,
+                        notes: lockNote,
+                        source: "compare"
+                      });
+
+                      if (!saved) {
+                        setNotice("No winner available to lock yet.");
+                        return;
+                      }
+
+                      setLockRefreshTick((value) => value + 1);
+                      setNotice(
+                        `Locked ${lockCandidate.kind} baseline as "${lockCandidate.winner}" for session "${activeSession?.name ?? "active"}".`
+                      );
+                    }}
+                  >
+                    Lock {lockCandidate.kind === "phase" ? "Phase" : "Placement"} Winner
+                  </button>
+                </div>
+              ) : null}
             </section>
           ) : null}
         </>

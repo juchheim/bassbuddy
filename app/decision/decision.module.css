@@ -87,6 +87,15 @@
   gap: 10px;
 }
 
+.lockPanel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
 .snapshotControls {
   display: grid;
   gap: 8px;

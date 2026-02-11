@@ -17,6 +17,7 @@ import {
 } from "@/lib/storage/experimentSessions";
 import { listRuns } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
+import { getWinnerLock } from "@/lib/storage/winnerLock";
 import type { RunMode } from "@/lib/types";
 import { buildDecisionReport, compareDecisionReports } from "@/lib/utils/decisionAssistant";
 import styles from "@/app/page.module.css";
@@ -122,6 +123,10 @@ export default function HomePage() {
     };
   }, [activeSessionId, refreshTick]);
   const sessionReport = useMemo(() => buildDecisionReport(sessionRuns), [sessionRuns]);
+  const sessionWinnerLock = useMemo(
+    () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
+    [activeSessionId, refreshTick]
+  );
   const sessionSnapshots = useMemo(
     () => (activeSessionId ? listDecisionSnapshots(activeSessionId) : []),
     [activeSessionId, refreshTick]
@@ -313,6 +318,18 @@ export default function HomePage() {
 
       <section className={`panel ${styles.summaryPanel}`}>
         <h2 className={styles.sectionTitle}>Session Summary</h2>
+        <p className="muted">
+          Locked placement baseline: <strong>{sessionWinnerLock?.placementWinner ?? "Not locked"}</strong>
+        </p>
+        <p className="muted">
+          Locked phase baseline: <strong>{sessionWinnerLock?.phaseWinner ?? "Not locked"}</strong>
+        </p>
+        {sessionWinnerLock ? (
+          <p className="muted">Locked at: {new Date(sessionWinnerLock.updatedAt).toLocaleString()}</p>
+        ) : (
+          <p className="muted">No baseline lock yet. Lock winners from Compare or Decision.</p>
+        )}
+        {sessionWinnerLock?.notes ? <p className="muted">Lock notes: {sessionWinnerLock.notes}</p> : null}
         <p className="muted">
           Best A/B result: <strong>{sessionReport.placement.winner ?? "No winner yet"}</strong>
         </p>

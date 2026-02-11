@@ -16,6 +16,7 @@ import {
   setActiveExperimentSession
 } from "@/lib/storage/experimentSessions";
 import { exportRunsPayload, listRuns } from "@/lib/storage/runsStore";
+import { clearWinnerLocks, getWinnerLock, saveWinnerLock } from "@/lib/storage/winnerLock";
 import {
   buildDecisionReport,
   compareDecisionReports,
@@ -105,6 +106,7 @@ export default function DecisionPage() {
   const [newSessionName, setNewSessionName] = useState("");
   const [renameSessionName, setRenameSessionName] = useState("");
   const [activeSessionId, setActiveSessionId] = useState("");
+  const [lockNotes, setLockNotes] = useState("");
 
   const sessions = useMemo(() => listExperimentSessions(), [refreshTick]);
 
@@ -159,6 +161,14 @@ export default function DecisionPage() {
     () => snapshots.find((entry) => entry.id === selectedSnapshotId) ?? null,
     [selectedSnapshotId, snapshots]
   );
+  const activeWinnerLock = useMemo(
+    () => (activeSessionId ? getWinnerLock(activeSessionId) : null),
+    [activeSessionId, refreshTick]
+  );
+
+  useEffect(() => {
+    setLockNotes(activeWinnerLock?.notes ?? "");
+  }, [activeWinnerLock?.sessionId, activeWinnerLock?.updatedAt]);
 
   const snapshotDelta = useMemo(() => {
     if (!selectedSnapshot) {
@@ -268,6 +278,71 @@ export default function DecisionPage() {
         <p className={styles.meta}>
           Session run count: {runs.length}. Snapshot count in session: {snapshots.length}.
         </p>
+        <div className={styles.lockPanel}>
+          <p className={styles.meta}>
+            Locked placement baseline: <strong>{activeWinnerLock?.placementWinner ?? "Not locked"}</strong>
+          </p>
+          <p className={styles.meta}>
+            Locked phase baseline: <strong>{activeWinnerLock?.phaseWinner ?? "Not locked"}</strong>
+          </p>
+          {activeWinnerLock ? (
+            <p className={styles.meta}>Locked at: {new Date(activeWinnerLock.updatedAt).toLocaleString()}</p>
+          ) : null}
+          <label>
+            Baseline lock notes (optional)
+            <input
+              type="text"
+              value={lockNotes}
+              placeholder="e.g. Keep this baseline for movie night setup"
+              onChange={(event) => setLockNotes(event.target.value)}
+            />
+          </label>
+          <div className={styles.snapshotControls}>
+            <button
+              type="button"
+              className="cta ctaSecondary"
+              onClick={() => {
+                const saved = saveWinnerLock({
+                  sessionId: activeSessionId || undefined,
+                  placementWinner: report.placement.winner ?? undefined,
+                  phaseWinner: report.phase.winner ?? undefined,
+                  notes: lockNotes,
+                  source: "decision"
+                });
+
+                if (!saved) {
+                  setMessage("No placement/phase winner is available to lock yet.");
+                  return;
+                }
+
+                setRefreshTick((value) => value + 1);
+                setMessage(`Locked current winners for session "${activeSession?.name ?? "active"}".`);
+              }}
+            >
+              Lock Current Winners as Baseline
+            </button>
+            <button
+              type="button"
+              className="cta ctaDanger"
+              disabled={!activeWinnerLock}
+              onClick={() => {
+                if (!activeWinnerLock) {
+                  return;
+                }
+
+                if (!window.confirm("Clear locked baseline for this session?")) {
+                  return;
+                }
+
+                const removed = clearWinnerLocks(activeSessionId || undefined);
+                setRefreshTick((value) => value + 1);
+                setMessage(`Cleared ${removed} baseline lock${removed === 1 ? "" : "s"} in this session.`);
+              }}
+            >
+              Clear Locked Baseline
+            </button>
+          </div>
+        </div>
         {report.scout.candidateCount > 0 ? (
           <p className={styles.meta}>
             Scout candidates: {report.scout.candidateCount}

@@ -7,6 +7,25 @@
   gap: 10px;
 }
 
+.lockSummary {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
+.lockControls {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
 .rowActions {
   display: grid;
   gap: 8px;

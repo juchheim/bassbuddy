@@ -25,6 +25,7 @@ This MVP is intentionally relative and decision-focused:
 - Includes Final Decision Assistant page that fuses all evidence, assigns confidence, and exports/prints a report.
 - Supports Decision Snapshots so you can track recommendation changes before/after placement moves.
 - Supports named experiment sessions; new runs and decision snapshots attach to the active session.
+- Supports session-scoped winner lock-in (placement + phase + notes) so you can persist a chosen baseline.
 - Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
 
 ## What It Does Not Do
@@ -126,9 +127,11 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - In multi-seat mode, capture A/B for Center/Left/Right and compare compromise score
    - In scout mode, review ranked candidates and promote top 2 into guided A/B seat compare
    - Review overlay + quality/repeatability gates + winner recommendation
+   - Optionally lock placement/phase winners with notes as the current session baseline
 7. In Final Decision Assistant:
    - Select/create/rename experiment sessions (for longitudinal tracking)
    - Review unified placement + phase recommendation with confidence tier
+   - Lock current winners as the active baseline for this session
    - Save decision snapshots and compare against current recommendations over time
    - Export one-click decision report JSON
    - Print a concise decision summary

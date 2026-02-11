@@ -11,6 +11,7 @@ import {
   SESSION_BUNDLE_VERSION
 } from "@/lib/storage/sessionBundle";
 import { getUiPrefs, markSetupCompleted, resetSetupCompleted } from "@/lib/storage/uiPrefs";
+import { getWinnerLock, saveWinnerLock } from "@/lib/storage/winnerLock";
 import type { DecisionReport } from "@/lib/utils/decisionAssistant";
 import type { BassRun } from "@/lib/types";
 
@@ -141,6 +142,7 @@ describe("session bundle storage", () => {
     const session = createExperimentSession("Movie Night");
     saveRun(makeRun("run-1", "ab", session.id, "Placement A"));
     saveDecisionSnapshot(baseReport, 1, "checkpoint", session.id);
+    saveWinnerLock({ sessionId: session.id, placementWinner: "Placement A", source: "decision" });
     startGuidedSession("ab", 2);
     markSetupCompleted("2026-02-01T10:05:00.000Z");
 
@@ -151,6 +153,7 @@ describe("session bundle storage", () => {
     expect(bundle.runs.runs).toHaveLength(1);
     expect(bundle.experimentSessions.sessions.some((entry) => entry.id === session.id)).toBe(true);
     expect(bundle.decisionSnapshots.snapshots).toHaveLength(1);
+    expect(bundle.winnerLocks.locks).toHaveLength(1);
     expect(bundle.guidedSession?.mode).toBe("ab");
     expect(bundle.uiPrefs.setupCompleted).toBe(true);
   });
@@ -200,6 +203,20 @@ describe("session bundle storage", () => {
           }
         ]
       },
+      winnerLocks: {
+        version: 1 as const,
+        locks: [
+          {
+            sessionId: "session-import",
+            placementWinner: "Placement B",
+            phaseWinner: "Phase 180",
+            notes: "Imported lock",
+            source: "decision" as const,
+            createdAt: "2026-02-01T12:00:00.000Z",
+            updatedAt: "2026-02-01T12:00:00.000Z"
+          }
+        ]
+      },
       guidedSession: {
         version: 1 as const,
         id: "guided-import",
@@ -228,6 +245,7 @@ describe("session bundle storage", () => {
     expect(listRuns()).toHaveLength(2);
     expect(listExperimentSessions().some((entry) => entry.id === "session-import")).toBe(true);
     expect(listDecisionSnapshots("session-import")).toHaveLength(1);
+    expect(getWinnerLock("session-import")?.placementWinner).toBe("Placement B");
     expect(getGuidedSession()?.id).toBe("guided-import");
     expect(getUiPrefs().setupCompleted).toBe(true);
   });
@@ -236,6 +254,7 @@ describe("session bundle storage", () => {
     const session = createExperimentSession("Before Replace");
     saveRun(makeRun("run-before", "ab", session.id, "Placement A"));
     saveDecisionSnapshot(baseReport, 1, "before", session.id);
+    saveWinnerLock({ sessionId: session.id, placementWinner: "Placement A", source: "compare" });
     startGuidedSession("ab", 2);
     markSetupCompleted("2026-02-01T10:05:00.000Z");
 
@@ -271,6 +290,10 @@ describe("session bundle storage", () => {
         version: 1 as const,
         snapshots: []
       },
+      winnerLocks: {
+        version: 1 as const,
+        locks: []
+      },
       guidedSession: null,
       uiPrefs: {
         version: 1 as const,
@@ -284,6 +307,7 @@ describe("session bundle storage", () => {
     expect(result.runs.total).toBe(0);
     expect(listRuns()).toHaveLength(0);
     expect(listDecisionSnapshots()).toHaveLength(0);
+    expect(getWinnerLock(session.id)).toBeNull();
     expect(getGuidedSession()).toBeNull();
     expect(getUiPrefs().setupCompleted).toBe(false);
     expect(listExperimentSessions().some((entry) => entry.id === "session-new")).toBe(true);

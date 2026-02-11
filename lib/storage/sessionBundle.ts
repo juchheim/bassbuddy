@@ -15,6 +15,11 @@ import {
 } from "@/lib/storage/guidedSession";
 import { exportRunsPayload, importRunsPayload, type ImportRunsResult } from "@/lib/storage/runsStore";
 import { exportUiPrefsPayload, importUiPrefsPayload, type ImportUiPrefsResult } from "@/lib/storage/uiPrefs";
+import {
+  exportWinnerLocksPayload,
+  importWinnerLocksPayload,
+  type ImportWinnerLocksResult
+} from "@/lib/storage/winnerLock";
 
 export const SESSION_BUNDLE_TYPE = "bassbuddy.session-bundle.v1";
 export const SESSION_BUNDLE_VERSION = 1;
@@ -27,6 +32,7 @@ export interface SessionBundleV1 {
   experimentSessions: ReturnType<typeof exportExperimentSessionsPayload>;
   runs: ReturnType<typeof exportRunsPayload>;
   decisionSnapshots: ReturnType<typeof exportDecisionSnapshotsPayload>;
+  winnerLocks: ReturnType<typeof exportWinnerLocksPayload>;
   guidedSession: ReturnType<typeof exportGuidedSessionPayload>;
   uiPrefs: ReturnType<typeof exportUiPrefsPayload>;
 }
@@ -41,6 +47,7 @@ export interface ImportSessionBundleResult {
   sessions: ImportExperimentSessionsResult;
   runs: ImportRunsResult;
   decisionSnapshots: ImportDecisionSnapshotsResult;
+  winnerLocks: ImportWinnerLocksResult;
   guidedSession: ImportGuidedSessionResult;
   uiPrefs: ImportUiPrefsResult;
 }
@@ -69,6 +76,12 @@ const EMPTY_GUIDED_RESULT: ImportGuidedSessionResult = {
   replaced: false,
   cleared: false,
   active: false
+};
+
+const EMPTY_WINNER_LOCK_RESULT: ImportWinnerLocksResult = {
+  added: 0,
+  replaced: 0,
+  total: 0
 };
 
 const EMPTY_PREFS_RESULT: ImportUiPrefsResult = {
@@ -107,6 +120,7 @@ export function exportSessionBundle(): SessionBundleV1 {
     experimentSessions: exportExperimentSessionsPayload(),
     runs: exportRunsPayload(),
     decisionSnapshots: exportDecisionSnapshotsPayload(),
+    winnerLocks: exportWinnerLocksPayload(),
     guidedSession: exportGuidedSessionPayload(),
     uiPrefs: exportUiPrefsPayload()
   };
@@ -125,6 +139,7 @@ export function importSessionBundlePayload(
       sessions: EMPTY_SESSION_RESULT,
       runs,
       decisionSnapshots: EMPTY_SNAPSHOTS_RESULT,
+      winnerLocks: EMPTY_WINNER_LOCK_RESULT,
       guidedSession: EMPTY_GUIDED_RESULT,
       uiPrefs: EMPTY_PREFS_RESULT
     };
@@ -139,6 +154,7 @@ export function importSessionBundlePayload(
       sessions: EMPTY_SESSION_RESULT,
       runs: EMPTY_RUNS_RESULT,
       decisionSnapshots: EMPTY_SNAPSHOTS_RESULT,
+      winnerLocks: EMPTY_WINNER_LOCK_RESULT,
       guidedSession: EMPTY_GUIDED_RESULT,
       uiPrefs: EMPTY_PREFS_RESULT
     };
@@ -148,6 +164,8 @@ export function importSessionBundlePayload(
   const runsPayload = "runs" in record ? record.runs : [];
   const snapshotsPayload =
     "decisionSnapshots" in record ? record.decisionSnapshots : "snapshots" in record ? record.snapshots : [];
+  const winnerLocksPayload =
+    "winnerLocks" in record ? record.winnerLocks : "locks" in record ? record.locks : [];
   const guidedPayload =
     "guidedSession" in record ? record.guidedSession : "guided" in record ? record.guided : null;
   const uiPrefsPayload = "uiPrefs" in record ? record.uiPrefs : null;
@@ -157,6 +175,7 @@ export function importSessionBundlePayload(
   const sessions = importExperimentSessionsPayload(sessionsPayload, importOptions);
   const runs = importRunsPayload(runsPayload, importOptions);
   const decisionSnapshots = importDecisionSnapshotsPayload(snapshotsPayload, importOptions);
+  const winnerLocks = importWinnerLocksPayload(winnerLocksPayload, importOptions);
   const guidedSession = importGuidedSessionPayload(guidedPayload, importOptions);
   const uiPrefs = importUiPrefsPayload(uiPrefsPayload, importOptions);
 
@@ -166,6 +185,7 @@ export function importSessionBundlePayload(
     sessions,
     runs,
     decisionSnapshots,
+    winnerLocks,
     guidedSession,
     uiPrefs
   };

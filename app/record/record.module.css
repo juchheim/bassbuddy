@@ -37,6 +37,15 @@
   gap: 8px;
 }
 
+.lockCard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+}
+
 .recentRuns {
   border: 1px solid var(--border);
   border-radius: 10px;
