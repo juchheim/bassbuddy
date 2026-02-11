@@ -14,6 +14,8 @@ This MVP is intentionally relative and decision-focused:
 - Measures known bass tone segments with Goertzel analysis.
 - Normalizes to per-run relative dB (median-centered).
 - Computes smoothness score, worst peak/dip, deep-dip and big-peak counts.
+- Scores each run for measurement quality and flags poor captures.
+- Supports repeatability compare mode (2-3 runs per side, median-profile compare with noise-floor gating).
 - Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
 
 ## What It Does Not Do
@@ -82,8 +84,8 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - A/B placement compare
    - Phase compare
 3. In Setup:
-   - Complete checklist
-   - Run mic level check
+   - Complete checklist + mic level check on first-time setup
+   - Use \"Run Full Setup Again\" only when needed on returning sessions
    - Open/download test track
 4. In Record:
    - Tap **Start Listening**
@@ -93,8 +95,9 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - Read curve + smoothness summary
    - Label run (`Placement A/B` or `Phase 0/180`)
 6. In Compare:
-   - Select two runs in same mode
-   - Review overlay + winner recommendation
+   - Choose single-run compare or repeatability mode
+   - In repeatability mode, pick two labels with 2-3 runs per side
+   - Review overlay + quality/repeatability gates + winner recommendation
 
 ## Practical Use Notes
 - These are **relative** results, not calibrated SPL.
