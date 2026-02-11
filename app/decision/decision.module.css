@@ -1,0 +1,90 @@
+.header {
+  margin-bottom: 12px;
+}
+
+.summaryPanel {
+  display: grid;
+  gap: 8px;
+}
+
+.confidenceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.confidenceHigh {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--border));
+}
+
+.confidenceMedium {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 35%, var(--border));
+}
+
+.confidenceLow {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+.actions {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionPanel {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionTitleRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.evidenceList {
+  display: grid;
+  gap: 8px;
+}
+
+.evidenceCard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.evidenceTitle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.compactList {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (min-width: 760px) {
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+

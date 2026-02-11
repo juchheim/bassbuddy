@@ -676,9 +676,14 @@ export default function ComparePage() {
       ) : null}
 
       <section style={{ marginTop: 12 }}>
-        <Link href={`/record?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
-          Run Another Measurement
-        </Link>
+        <div className={styles.rowActions}>
+          <Link href={`/record?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
+            Run Another Measurement
+          </Link>
+          <Link href="/decision" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Final Decision Assistant
+          </Link>
+        </div>
       </section>
     </main>
   );

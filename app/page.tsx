@@ -94,6 +94,12 @@ export default function HomePage() {
           href="/compare"
           cta="Open Compare"
         />
+        <ModeCard
+          title="Final Decision Assistant"
+          description="Combine all evidence into one recommendation with confidence and next actions."
+          href="/decision"
+          cta="Open Decision Assistant"
+        />
       </section>
 
       <section className={`panel ${styles.disclaimer}`}>

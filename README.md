@@ -22,6 +22,7 @@ This MVP is intentionally relative and decision-focused:
 - Supports placement scout mode (auto-rank candidate locations and promote top two into guided A/B).
 - Enforces run-to-run volume consistency gates to catch level drift between captures.
 - Includes local session tools: fresh-session reset plus JSON export/import.
+- Includes Final Decision Assistant page that fuses all evidence, assigns confidence, and exports/prints a report.
 - Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
 
 ## What It Does Not Do
@@ -113,6 +114,10 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
    - In multi-seat mode, capture A/B for Center/Left/Right and compare compromise score
    - In scout mode, review ranked candidates and promote top 2 into guided A/B seat compare
    - Review overlay + quality/repeatability gates + winner recommendation
+7. In Final Decision Assistant:
+   - Review unified placement + phase recommendation with confidence tier
+   - Export one-click decision report JSON
+   - Print a concise decision summary
 
 ## Practical Use Notes
 - These are **relative** results, not calibrated SPL.

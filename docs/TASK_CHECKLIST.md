@@ -17,3 +17,4 @@
 - [x] Add repeatability guided sessions + quality gating
 - [x] Add placement scout mode (4-8 candidate ranking + A/B promotion)
 - [x] Add session tools (fresh reset + JSON export/import)
+- [x] Add Final Decision Assistant (cross-mode recommendation + confidence + report export/print)

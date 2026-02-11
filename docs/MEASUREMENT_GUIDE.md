@@ -42,3 +42,8 @@
 - Results are relative, not calibrated SPL.
 - Consumer mic processing can bias measurements.
 - Use this tool for quick placement/phase decisions, not precision EQ design.
+
+## Finalizing
+- Open **Final Decision Assistant** to combine scout, A/B, multi-seat, and phase evidence.
+- Follow the action plan if confidence is medium/low.
+- Export JSON and print the summary for your setup notes.
