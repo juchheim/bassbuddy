@@ -1,4 +1,5 @@
 export const TEST_TONE_FREQUENCIES = [25, 31.5, 40, 50, 63, 80, 100, 125] as const;
+export const SYNC_BEEP_FREQ_HZ = 1000;
 
 export const TRACK_TIMINGS = {
   preBeepSilenceSec: 0.5,

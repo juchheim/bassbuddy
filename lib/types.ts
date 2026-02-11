@@ -36,6 +36,15 @@ export interface MicSettingsSnapshot {
   warnings: string[];
 }
 
+export type RunQualityTier = "excellent" | "usable" | "poor";
+
+export interface RunQuality {
+  score: number;
+  tier: RunQualityTier;
+  blocking: boolean;
+  issues: string[];
+}
+
 export interface BassRun {
   id: string;
   createdAt: string;
@@ -49,6 +58,10 @@ export interface BassRun {
   measurements: FrequencyMeasurement[];
   score: number;
   highlights: RunHighlights;
+  quality?: RunQuality;
+  medianRawLevelDb?: number;
+  beepToneLevelDb?: number;
+  volumeAnchorDb?: number;
   notes?: string;
 }
 

@@ -7,7 +7,7 @@
 .item {
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #f2efe8;
+  background: var(--panel-soft);
   color: var(--muted);
   padding: 8px;
   text-align: center;
@@ -16,14 +16,14 @@
 
 .itemActive {
   border-color: var(--accent);
-  background: #dff0f8;
+  background: var(--accent-soft);
   color: var(--accent);
   font-weight: 700;
 }
 
 .itemDone {
-  border-color: #b8d6c0;
-  background: #e8f7eb;
+  border-color: var(--ok);
+  background: var(--ok-soft);
   color: var(--ok);
 }
 

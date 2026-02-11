@@ -111,17 +111,17 @@ export function MicMeter({ onSnapshot, onLevelStatus }: MicMeterProps) {
   }, [stop]);
 
   let statusMessage = "Waiting for mic check.";
-  let fillColor = "#7d8a98";
+  let fillColor = "var(--muted)";
 
   if (levelStatus === "clipping") {
     statusMessage = "Too loud (clipping risk). Lower system volume slightly.";
-    fillColor = "#9b2226";
+    fillColor = "var(--danger)";
   } else if (levelStatus === "too-quiet") {
     statusMessage = "Too quiet. Raise system volume or move closer to listening spot.";
-    fillColor = "#a95000";
+    fillColor = "var(--warn)";
   } else if (levelStatus === "ok") {
     statusMessage = "Mic level looks usable.";
-    fillColor = "#1f7a2f";
+    fillColor = "var(--ok)";
   }
 
   return (

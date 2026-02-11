@@ -1,14 +1,29 @@
 :root {
-  --bg: #f2efe9;
-  --panel: #fffdf8;
-  --ink: #1f1f1f;
-  --muted: #4f5760;
-  --accent: #1d5f7a;
-  --accent-soft: #d6ebf5;
-  --warn: #a95000;
-  --danger: #9b2226;
-  --ok: #1f7a2f;
-  --border: #d7d0c6;
+  --bg: #ece8f4;
+  --bg-top: #f7f3fd;
+  --bg-bottom: #e2ddee;
+  --panel: #f8f6fc;
+  --panel-soft: #f2eef9;
+  --surface: #ffffff;
+  --ink: #212542;
+  --muted: #5f6684;
+  --accent: #4f3ea0;
+  --accent-strong: #3d2f84;
+  --accent-soft: #e1dcf2;
+  --accent-soft-strong: #d6cfee;
+  --accent-orange: #c57447;
+  --warn: #9f623d;
+  --danger: #94455e;
+  --danger-strong: #7e344a;
+  --ok: #2f6c58;
+  --ok-soft: #e4f0ea;
+  --border: #cac4de;
+  --meter-track: #ddd7e9;
+  --chart-grid: #cec8e1;
+  --chart-baseline: #6d6893;
+  --series-a: #4b3f98;
+  --series-b: #c67445;
+  --brand-shadow: rgba(66, 54, 120, 0.2);
 }
 
 * {
@@ -19,7 +34,10 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: radial-gradient(circle at top, #fff9ef 0%, var(--bg) 48%, #e7e2d8 100%);
+  background:
+    radial-gradient(circle at 14% -12%, #fbf8ff 0%, transparent 44%),
+    radial-gradient(circle at 96% 112%, #f4e8de 0%, transparent 36%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 58%, var(--bg-bottom) 100%);
   color: var(--ink);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
 }
@@ -35,11 +53,36 @@ select {
   font: inherit;
 }
 
+input,
+select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent-orange);
+  outline-offset: 1px;
+}
+
 .appShell {
   min-height: 100vh;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
   padding: 16px;
+}
+
+.appBrandBar {
+  width: min(980px, 100%);
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
 }
 
 .pageContainer {
@@ -48,13 +91,13 @@ select {
   border: 1px solid var(--border);
   border-radius: 20px;
   padding: 18px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 14px 30px var(--brand-shadow);
 }
 
 .panel {
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: #fffcf6;
+  background: var(--panel-soft);
   padding: 14px;
 }
 
@@ -68,16 +111,35 @@ select {
   color: #ffffff;
   width: 100%;
   cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+
+.cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--accent-strong);
 }
 
 .ctaSecondary {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.ctaSecondary:hover:not(:disabled) {
+  background: var(--accent-soft-strong);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--accent-orange);
+  outline-offset: 2px;
 }
 
 .ctaDanger {
   background: var(--danger);
   color: #fff;
+}
+
+.ctaDanger:hover:not(:disabled) {
+  background: var(--danger-strong);
 }
 
 .cta:disabled {

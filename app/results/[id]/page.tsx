@@ -66,7 +66,7 @@ export default function ResultsPage() {
             {
               id: run.id,
               name: run.label ?? "Current Run",
-              color: "#1d5f7a",
+              color: "var(--series-a)",
               measurements: run.measurements
             }
           ]}
@@ -76,6 +76,25 @@ export default function ResultsPage() {
       <section style={{ marginTop: 12 }}>
         <SummaryCard run={run} />
       </section>
+
+      {run.quality ? (
+        <section className="panel" style={{ marginTop: 12 }}>
+          <h2>Run Quality</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Quality score: <strong>{run.quality.score}/100</strong> ({run.quality.tier})
+          </p>
+          {run.quality.blocking ? (
+            <p className="error" style={{ margin: 0 }}>
+              This run should be retaken before using it for placement decisions.
+            </p>
+          ) : null}
+          {run.quality.issues.map((issue) => (
+            <p className="warning" key={issue} style={{ margin: 0 }}>
+              {issue}
+            </p>
+          ))}
+        </section>
+      ) : null}
 
       {run.notes ? (
         <section className="panel" style={{ marginTop: 12 }}>

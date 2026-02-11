@@ -12,6 +12,11 @@
   gap: 8px;
 }
 
+.qualityPanel {
+  display: grid;
+  gap: 8px;
+}
+
 .recommendation {
   margin: 0;
   line-height: 1.4;

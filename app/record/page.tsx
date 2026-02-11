@@ -14,8 +14,10 @@ import {
   TRACK_DURATION_AFTER_BEEP_SEC
 } from "@/lib/constants/testTrack";
 import { saveRun } from "@/lib/storage/runsStore";
+import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import type { BassRun, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
+import { evaluateRunQuality } from "@/lib/utils/runQuality";
 import styles from "@/app/record/record.module.css";
 
 function concatFloat32(chunks: Float32Array[]): Float32Array {
@@ -43,6 +45,7 @@ function getPlatform(): string {
 export default function RecordPage() {
   const router = useRouter();
   const [mode, setMode] = useState<RunMode>("baseline");
+  const [setupGate, setSetupGate] = useState<"checking" | "ready">("checking");
 
   const [phase, setPhase] = useState<"idle" | "recording" | "processing">("idle");
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -68,8 +71,16 @@ export default function RecordPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setMode(normalizeMode(params.get("mode")));
-  }, []);
+    const nextMode = normalizeMode(params.get("mode"));
+    setMode(nextMode);
+
+    if (!hasCompletedSetup()) {
+      router.replace(`/setup?mode=${nextMode}`);
+      return;
+    }
+
+    setSetupGate("ready");
+  }, [router]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -108,6 +119,16 @@ export default function RecordPage() {
       });
 
       const notes: string[] = [];
+      const quality = evaluateRunQuality({
+        confidence: analysis.confidence,
+        beepDetected: analysis.beepDetected,
+        clippingLikely: analysis.clippingLikely || peakLive > 0.98,
+        tooQuietLikely: analysis.tooQuietLikely || rmsLive < 0.003,
+        micProcessingRisk: session.micSettings.processingRisk,
+        peakDbfs: analysis.peakDbfs,
+        overallRmsDbfs: analysis.overallRmsDbfs,
+        beepToneLevelDb: analysis.beepToneLevelDb
+      });
 
       if (analysis.clippingLikely || peakLive > 0.98) {
         notes.push("Possible clipping detected. Consider reducing playback volume slightly.");
@@ -119,6 +140,10 @@ export default function RecordPage() {
 
       if (usedManualStart) {
         notes.push("Manual sync start used. Confidence may be lower.");
+      }
+
+      if (quality.blocking) {
+        notes.push("Run quality is poor. Re-run this measurement before making placement decisions.");
       }
 
       const run: BassRun = {
@@ -136,6 +161,10 @@ export default function RecordPage() {
         measurements: analysis.measurements,
         score: analysis.score,
         highlights: analysis.highlights,
+        quality,
+        medianRawLevelDb: analysis.medianRawDb,
+        beepToneLevelDb: analysis.beepToneLevelDb,
+        volumeAnchorDb: analysis.volumeAnchorDb,
         notes: notes.length ? notes.join(" ") : undefined
       };
 
@@ -242,6 +271,19 @@ export default function RecordPage() {
 
   const showManualStart = phase === "recording" && beepTimeSec === null && elapsedSec >= MANUAL_START_TIMEOUT_SEC;
 
+  if (setupGate === "checking") {
+    return (
+      <main className="pageContainer">
+        <section className="panel">
+          <p className="muted">Checking setup status...</p>
+          <p className="muted" style={{ marginBottom: 0 }}>
+            If this is your first run on this device, you will be redirected to Setup.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="pageContainer">
       <header className={styles.header}>
@@ -288,7 +330,7 @@ export default function RecordPage() {
         ) : null}
 
         <Link href={`/setup?mode=${mode}`} className="cta ctaSecondary" style={{ textAlign: "center" }}>
-          Back to Setup
+          Open Setup Checks
         </Link>
       </section>
 

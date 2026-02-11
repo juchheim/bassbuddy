@@ -58,7 +58,7 @@ export function ResponseChart({ series }: ResponseChartProps) {
     <div className={styles.wrap}>
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={chartData} margin={{ left: 0, right: 8, top: 8, bottom: 12 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#d0c8bc" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
           <XAxis
             type="number"
             dataKey="freqHz"
@@ -68,7 +68,7 @@ export function ResponseChart({ series }: ResponseChartProps) {
             tickFormatter={(value) => `${value}`}
           />
           <YAxis unit=" dB" domain={[-20, 20]} />
-          <ReferenceLine y={0} stroke="#6e7e8a" strokeDasharray="4 4" />
+          <ReferenceLine y={0} stroke="var(--chart-baseline)" strokeDasharray="4 4" />
           <Tooltip formatter={(value: number) => `${value.toFixed(1)} dB`} labelFormatter={(value) => `${value} Hz`} />
           <Legend />
           {series.map((entry) => (

@@ -1,0 +1,11 @@
+.wrap {
+  display: inline-flex;
+  width: clamp(150px, 26vw, 230px);
+  line-height: 0;
+}
+
+.logo {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 7px 16px var(--brand-shadow));
+}

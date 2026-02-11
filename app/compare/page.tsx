@@ -9,6 +9,7 @@ import { deleteRun, listRuns } from "@/lib/storage/runsStore";
 import type { BassRun, RunMode } from "@/lib/types";
 import { compareRuns } from "@/lib/utils/compareRuns";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
+import { evaluateCompareReadiness } from "@/lib/utils/runQuality";
 import styles from "@/app/compare/compare.module.css";
 
 function recommendationText(runA: BassRun, runB: BassRun) {
@@ -80,6 +81,8 @@ export default function ComparePage() {
 
   const recommendation =
     runA && runB && runA.id !== runB.id ? recommendationText(runA, runB) : null;
+  const compareReadiness =
+    runA && runB && runA.id !== runB.id ? evaluateCompareReadiness(runA, runB) : null;
 
   return (
     <main className="pageContainer">
@@ -184,19 +187,53 @@ export default function ComparePage() {
 
       {runA && runB && runA.id !== runB.id ? (
         <>
+          {compareReadiness ? (
+            <section className={`panel ${styles.qualityPanel}`} style={{ marginTop: 12 }}>
+              <h2>Measurement Quality Gate</h2>
+              {compareReadiness.blockers.length ? (
+                <>
+                  {compareReadiness.blockers.map((blocker) => (
+                    <p key={blocker} className="error" style={{ margin: 0 }}>
+                      {blocker}
+                    </p>
+                  ))}
+                  <p className="warning" style={{ marginBottom: 0 }}>
+                    Winner declaration blocked. Re-run the flagged measurements.
+                  </p>
+                </>
+              ) : (
+                <p className="ok" style={{ margin: 0 }}>
+                  Quality gate passed. Winner recommendation is enabled.
+                </p>
+              )}
+              {compareReadiness.warnings.map((warning) => (
+                <p key={warning} className="warning" style={{ margin: 0 }}>
+                  {warning}
+                </p>
+              ))}
+              {compareReadiness.repeatability ? (
+                <p className="muted" style={{ marginBottom: 0 }}>
+                  Repeatability signal: {compareReadiness.repeatability.verdict} (mean difference{" "}
+                  {compareReadiness.repeatability.meanAbsDiffDb.toFixed(2)} dB, max{" "}
+                  {compareReadiness.repeatability.maxAbsDiffDb.toFixed(2)} dB).
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
           <section className="panel" style={{ marginTop: 12 }}>
             <ResponseChart
               series={[
                 {
                   id: runA.id,
                   name: runA.label ?? "Run A",
-                  color: "#1d5f7a",
+                  color: "var(--series-a)",
                   measurements: runA.measurements
                 },
                 {
                   id: runB.id,
                   name: runB.label ?? "Run B",
-                  color: "#b65f0f",
+                  color: "var(--series-b)",
                   measurements: runB.measurements
                 }
               ]}
@@ -206,8 +243,16 @@ export default function ComparePage() {
           {recommendation ? (
             <section className="panel" style={{ marginTop: 12 }}>
               <h2>Recommendation</h2>
-              <p className={styles.recommendation}>{recommendation.headline}</p>
-              <p className="muted">{recommendation.detail}</p>
+              {compareReadiness?.canDeclareWinner ? (
+                <>
+                  <p className={styles.recommendation}>{recommendation.headline}</p>
+                  <p className="muted">{recommendation.detail}</p>
+                </>
+              ) : (
+                <p className="warning" style={{ marginBottom: 0 }}>
+                  Winner recommendation withheld until quality blockers are resolved.
+                </p>
+              )}
             </section>
           ) : null}
         </>

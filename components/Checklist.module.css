@@ -9,7 +9,7 @@
   align-items: flex-start;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface);
   padding: 10px;
 }
 

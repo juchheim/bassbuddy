@@ -1,36 +1,79 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { ModeCard } from "@/components/ModeCard";
 import { ResetRunsButton } from "@/components/ResetRunsButton";
+import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import styles from "@/app/page.module.css";
 
+function startHref(mode: "baseline" | "ab" | "phase", setupCompleted: boolean): string {
+  if (setupCompleted) {
+    return `/record?mode=${mode}`;
+  }
+
+  return `/setup?mode=${mode}`;
+}
+
 export default function HomePage() {
+  const [setupCompleted, setSetupCompleted] = useState(false);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    setSetupCompleted(hasCompletedSetup());
+    setPrefsLoaded(true);
+  }, []);
+
+  const statusText = useMemo(() => {
+    if (!prefsLoaded) {
+      return "Checking setup status...";
+    }
+
+    return setupCompleted
+      ? "Quick Start enabled: checklist + mic check already completed on this device."
+      : "First-time setup required: complete checklist + mic check once to unlock Quick Start.";
+  }, [prefsLoaded, setupCompleted]);
+
   return (
     <main className="pageContainer">
       <header className={styles.header}>
-        <h1>BassBuddy (MVP)</h1>
+        <h1 className={styles.pageTitle}>Sub Placement Coach</h1>
         <p className={styles.subtitle}>
-          Sub Placement Coach for quick relative bass measurements using your phone/laptop mic.
+          Fast, repeatable relative bass checks using your phone or laptop microphone.
         </p>
       </header>
 
-      <section className="grid two">
+      <section className={`panel ${styles.setupStatus}`}>
+        <h2 className={styles.sectionTitle}>Setup Status</h2>
+        <p className="muted">{statusText}</p>
+        <div className={styles.quickActions}>
+          <Link href="/setup?mode=baseline" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Run Setup Checks
+          </Link>
+          <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Test Track
+          </Link>
+        </div>
+      </section>
+
+      <section className="grid two" style={{ marginTop: 12 }}>
         <ModeCard
           title="Quick Baseline Measurement"
           description="Capture one run at your seat and see the response curve + smoothness score."
-          href="/setup?mode=baseline"
-          cta="Start Baseline"
+          href={startHref("baseline", setupCompleted)}
+          cta={setupCompleted ? "Start Baseline" : "Open Setup"}
         />
         <ModeCard
           title="Compare Two Placements (A/B)"
           description="Measure placement A and B, then get a clear winner based on smoothness and dips."
-          href="/setup?mode=ab"
-          cta="Start A/B"
+          href={startHref("ab", setupCompleted)}
+          cta={setupCompleted ? "Start A/B" : "Open Setup"}
         />
         <ModeCard
           title="Phase Test (0 vs 180)"
           description="Measure with phase switch at 0° and 180° and choose the better setting."
-          href="/setup?mode=phase"
-          cta="Start Phase Test"
+          href={startHref("phase", setupCompleted)}
+          cta={setupCompleted ? "Start Phase Test" : "Open Setup"}
         />
         <ModeCard
           title="Review Saved Runs"
@@ -43,7 +86,7 @@ export default function HomePage() {
       <section className={`panel ${styles.disclaimer}`}>
         <h2 className={styles.sectionTitle}>How It Works</h2>
         <p className="muted">
-          Play the BassBuddy test track on your main system while this app listens at the seat mic. BassBuddy aligns
+          Play the SubSpot test track on your main system while this app listens at the seat mic. SubSpot aligns
           to the sync beep, measures each bass tone step, then shows relative dB smoothness.
         </p>
         <ul className={styles.list}>
@@ -51,12 +94,6 @@ export default function HomePage() {
           <li>Keep playback volume and mic position identical between runs.</li>
           <li>Consumer mic processing can affect results even when we request it off.</li>
         </ul>
-      </section>
-
-      <section style={{ marginTop: 12 }}>
-        <Link href="/test-track" className="cta ctaSecondary" style={{ display: "inline-block", textAlign: "center" }}>
-          Open Test Track Page
-        </Link>
       </section>
 
       <section className="panel" style={{ marginTop: 12 }}>

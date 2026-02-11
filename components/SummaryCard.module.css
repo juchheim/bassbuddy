@@ -12,7 +12,7 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 4px 10px;
-  background: #ffffff;
+  background: var(--surface);
   font-weight: 700;
 }
 

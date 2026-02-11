@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Checklist, type ChecklistItem } from "@/components/Checklist";
 import { MicMeter, type MicLevelStatus } from "@/components/MicMeter";
+import { getUiPrefs, markSetupCompleted } from "@/lib/storage/uiPrefs";
 import type { MicSettingsSnapshot, RunMode } from "@/lib/types";
 import { modeTitle, normalizeMode } from "@/lib/utils/mode";
 import styles from "@/app/setup/setup.module.css";
@@ -24,6 +26,8 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
 ];
 
 export default function SetupPage() {
+  const router = useRouter();
+
   const [mode, setMode] = useState<RunMode>("baseline");
 
   const [checks, setChecks] = useState<Record<string, boolean>>({
@@ -35,13 +39,26 @@ export default function SetupPage() {
   const [micSnapshot, setMicSnapshot] = useState<MicSettingsSnapshot | null>(null);
   const [levelStatus, setLevelStatus] = useState<MicLevelStatus>("unknown");
 
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [setupCompleted, setSetupCompleted] = useState(false);
+  const [setupCompletedAt, setSetupCompletedAt] = useState<string | undefined>(undefined);
+  const [forceFullSetup, setForceFullSetup] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setMode(normalizeMode(params.get("mode")));
+
+    const prefs = getUiPrefs();
+    setSetupCompleted(prefs.setupCompleted);
+    setSetupCompletedAt(prefs.setupCompletedAt);
+    setPrefsLoaded(true);
   }, []);
 
   const allChecked = useMemo(() => CHECKLIST_ITEMS.every((item) => Boolean(checks[item.id])), [checks]);
-  const canContinue = allChecked && micSnapshot !== null && levelStatus !== "unknown";
+  const needsFullSetup = !setupCompleted || forceFullSetup;
+  const canContinue = needsFullSetup ? allChecked && micSnapshot !== null && levelStatus !== "unknown" : true;
+
+  const completedAtDisplay = setupCompletedAt ? new Date(setupCompletedAt).toLocaleString() : "Unknown";
 
   return (
     <main className="pageContainer">
@@ -50,58 +67,119 @@ export default function SetupPage() {
         <p className="muted">Mode: {modeTitle(mode)}</p>
       </header>
 
-      <section className={`panel ${styles.row}`}>
-        <h2>Checklist</h2>
-        <Checklist
-          items={CHECKLIST_ITEMS}
-          values={checks}
-          onToggle={(id, checked) => setChecks((prev) => ({ ...prev, [id]: checked }))}
-        />
-      </section>
+      {!prefsLoaded ? (
+        <section className="panel">
+          <p className="muted">Loading setup preferences...</p>
+        </section>
+      ) : null}
 
-      <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
-        <h2>Mic Level Check</h2>
-        <p className={styles.note}>
-          We request echo cancellation, noise suppression, and auto-gain control off. Browser/device behavior varies.
-        </p>
-        <MicMeter onSnapshot={setMicSnapshot} onLevelStatus={setLevelStatus} />
-      </section>
+      {prefsLoaded && !needsFullSetup ? (
+        <>
+          <section className={`panel ${styles.row}`}>
+            <h2>Quick Start Ready</h2>
+            <p className={styles.note}>
+              Checklist and mic preflight were already completed on this device. You can go straight to recording.
+            </p>
+            <p className="muted" style={{ margin: 0 }}>Last completed: {completedAtDisplay}</p>
+            <div className={styles.links}>
+              <button
+                className="cta"
+                type="button"
+                onClick={() => {
+                  router.push(`/record?mode=${mode}`);
+                }}
+              >
+                Continue to Record
+              </button>
+              <button
+                className="cta ctaSecondary"
+                type="button"
+                onClick={() => {
+                  setForceFullSetup(true);
+                  setChecks({ seat: false, volume: false, processing: false });
+                  setMicSnapshot(null);
+                  setLevelStatus("unknown");
+                }}
+              >
+                Run Full Setup Again
+              </button>
+            </div>
+          </section>
 
-      <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
-        <h2>Test Track</h2>
-        <p className={styles.note}>
-          Recommended workflow: play this track on your main system while BassBuddy records here.
-        </p>
-        <div className={styles.links}>
-          <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
-            Open Test Track
-          </Link>
-          <a href="/test-tracks/bassbuddy_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
-            Download WAV Test Track
-          </a>
-        </div>
-      </section>
+          <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
+            <h2>Test Track</h2>
+            <p className={styles.note}>
+              Recommended workflow: play this track on your main system while recording here.
+            </p>
+            <div className={styles.links}>
+              <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+                Open Test Track
+              </Link>
+              <a href="/test-tracks/bassbuddy_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
+                Download WAV Test Track
+              </a>
+            </div>
+          </section>
+        </>
+      ) : null}
 
-      <section style={{ marginTop: 12 }}>
-        <Link
-          href={`/record?mode=${mode}`}
-          aria-disabled={!canContinue}
-          className="cta"
-          style={{
-            pointerEvents: canContinue ? "auto" : "none",
-            opacity: canContinue ? 1 : 0.5,
-            display: "inline-block",
-            textAlign: "center"
-          }}
-        >
-          Continue to Record
-        </Link>
-      </section>
+      {prefsLoaded && needsFullSetup ? (
+        <>
+          <section className={`panel ${styles.row}`}>
+            <h2>{setupCompleted ? "Re-run Setup Checks" : "First-Time Setup (Required Once)"}</h2>
+            <Checklist
+              items={CHECKLIST_ITEMS}
+              values={checks}
+              onToggle={(id, checked) => setChecks((prev) => ({ ...prev, [id]: checked }))}
+            />
+          </section>
 
-      {!canContinue ? (
-        <p className="warning" style={{ marginTop: 8 }}>
-          Complete checklist and run mic check before continuing.
-        </p>
+          <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
+            <h2>Mic Level Check</h2>
+            <p className={styles.note}>
+              We request echo cancellation, noise suppression, and auto-gain control off. Browser/device behavior varies.
+            </p>
+            <MicMeter onSnapshot={setMicSnapshot} onLevelStatus={setLevelStatus} />
+          </section>
+
+          <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
+            <h2>Test Track</h2>
+            <p className={styles.note}>
+              Recommended workflow: play this track on your main system while recording here.
+            </p>
+            <div className={styles.links}>
+              <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+                Open Test Track
+              </Link>
+              <a href="/test-tracks/bassbuddy_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
+                Download WAV Test Track
+              </a>
+            </div>
+          </section>
+
+          <section style={{ marginTop: 12 }}>
+            <button
+              className="cta"
+              type="button"
+              disabled={!canContinue}
+              onClick={() => {
+                const prefs = markSetupCompleted();
+                setSetupCompleted(true);
+                setSetupCompletedAt(prefs.setupCompletedAt);
+                setForceFullSetup(false);
+                router.push(`/record?mode=${mode}`);
+              }}
+            >
+              Save Setup and Continue to Record
+            </button>
+          </section>
+
+          {!canContinue ? (
+            <p className="warning" style={{ marginTop: 8 }}>
+              Complete checklist and run mic check before continuing.
+            </p>
+          ) : null}
+        </>
       ) : null}
     </main>
   );

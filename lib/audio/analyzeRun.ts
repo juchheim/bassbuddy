@@ -2,6 +2,7 @@ import { detectBeep } from "@/lib/audio/beepDetect";
 import { goertzelDb } from "@/lib/audio/goertzel";
 import {
   buildToneSchedule,
+  SYNC_BEEP_FREQ_HZ,
   TEST_TONE_FREQUENCIES,
   TRACK_TIMINGS,
   type ToneSegment
@@ -26,6 +27,9 @@ export interface AnalyzeRunOutput {
   tooQuietLikely: boolean;
   peakDbfs: number;
   overallRmsDbfs: number;
+  medianRawDb: number;
+  beepToneLevelDb: number;
+  volumeAnchorDb: number;
   schedule: ToneSegment[];
 }
 
@@ -124,6 +128,13 @@ function measureToneLevel(
   return median(values);
 }
 
+function measureBeepToneLevel(samples: Float32Array, sampleRate: number, beepTimeSec: number): number {
+  const beepStart = beepTimeSec + 0.05;
+  const beepEnd = beepTimeSec + TRACK_TIMINGS.beepSec - 0.05;
+
+  return measureToneLevel(samples, sampleRate, SYNC_BEEP_FREQ_HZ, beepStart, beepEnd);
+}
+
 export function analyzeRun(input: AnalyzeRunInput): AnalyzeRunOutput {
   const { samples, sampleRate, manualBeepTimeSec } = input;
 
@@ -173,6 +184,8 @@ export function analyzeRun(input: AnalyzeRunInput): AnalyzeRunOutput {
   const peakValue = peakAbs(samples);
   const peakDbfs = powerToDb(peakValue * peakValue + 1e-12);
   const overallRmsDbfs = powerToDb(rms(samples) ** 2 + 1e-12);
+  const beepToneLevelDb = measureBeepToneLevel(samples, sampleRate, beepTimeSec);
+  const volumeAnchorDb = medianRaw;
 
   return {
     beepDetected,
@@ -185,6 +198,9 @@ export function analyzeRun(input: AnalyzeRunInput): AnalyzeRunOutput {
     tooQuietLikely: overallRmsDbfs < -55,
     peakDbfs,
     overallRmsDbfs,
+    medianRawDb: medianRaw,
+    beepToneLevelDb,
+    volumeAnchorDb,
     schedule
   };
 }

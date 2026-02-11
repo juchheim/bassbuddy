@@ -2,9 +2,22 @@
   margin-bottom: 14px;
 }
 
+.pageTitle {
+  margin: 0;
+}
+
 .subtitle {
   margin: 8px 0 0;
   color: var(--muted);
+}
+
+.setupStatus {
+  margin-top: 10px;
+}
+
+.quickActions {
+  display: grid;
+  gap: 8px;
 }
 
 .disclaimer {
