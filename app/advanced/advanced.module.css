@@ -1,0 +1,19 @@
+.header {
+  margin-bottom: 12px;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+}
+
+.grid {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 760px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

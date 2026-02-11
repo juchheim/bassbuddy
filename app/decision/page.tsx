@@ -418,7 +418,7 @@ export default function DecisionPage() {
         >
           Print Summary
         </button>
-        <Link href="/compare" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+        <Link href="/advanced/compare?mode=ab" className="cta ctaSecondary" style={{ textAlign: "center" }}>
           Open Compare
         </Link>
       </section>

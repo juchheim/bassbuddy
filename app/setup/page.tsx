@@ -57,10 +57,15 @@ export default function SetupPage() {
   const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
   const [guidedNotice, setGuidedNotice] = useState<string | null>(null);
   const [scoutCandidateCount, setScoutCandidateCount] = useState(SCOUT_DEFAULT_CANDIDATES);
+  const [showAdvancedTools, setShowAdvancedTools] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setMode(normalizeMode(params.get("mode")));
+    const nextMode = normalizeMode(params.get("mode"));
+    const advancedRequested =
+      params.get("advanced") === "1" || nextMode === "multiseat" || nextMode === "scout";
+    setMode(nextMode);
+    setShowAdvancedTools(advancedRequested);
 
     const prefs = getUiPrefs();
     setSetupCompleted(prefs.setupCompleted);
@@ -214,7 +219,7 @@ export default function SetupPage() {
         </>
       ) : null}
 
-      {prefsLoaded && guidedSupported ? (
+      {prefsLoaded && guidedSupported && showAdvancedTools ? (
         <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
           <h2>{mode === "scout" ? "Placement Scout Session" : "Guided Repeatability Session"}</h2>
           <p className={styles.note}>
@@ -354,7 +359,7 @@ export default function SetupPage() {
                   </button>
                 ) : null}
                 {guidedComplete ? (
-                  <Link href={`/compare?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
+                  <Link href={`/advanced/compare?mode=${mode}`} className="cta" style={{ textAlign: "center" }}>
                     Open Compare
                   </Link>
                 ) : null}
@@ -362,6 +367,23 @@ export default function SetupPage() {
             </>
           )}
           {guidedNotice ? <p className="muted" style={{ margin: 0 }}>{guidedNotice}</p> : null}
+        </section>
+      ) : null}
+
+      {prefsLoaded && guidedSupported && !showAdvancedTools ? (
+        <section className={`panel ${styles.row}`} style={{ marginTop: 12 }}>
+          <h2>Need More Control?</h2>
+          <p className={styles.note}>
+            Guided repeatability sessions, multi-seat compromise, and scout workflows are available in Advanced Tools.
+          </p>
+          <div className={styles.links}>
+            <Link href={`/setup?mode=${mode}&advanced=1`} className="cta ctaSecondary" style={{ textAlign: "center" }}>
+              Open Advanced Setup
+            </Link>
+            <Link href="/advanced" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+              Open Advanced Tools
+            </Link>
+          </div>
         </section>
       ) : null}
     </main>

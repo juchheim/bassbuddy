@@ -100,6 +100,7 @@ export default function RecordPage() {
   const [preflightError, setPreflightError] = useState<string | null>(null);
   const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
   const [guidedNotice, setGuidedNotice] = useState<string | null>(null);
+  const [showAdvancedUi, setShowAdvancedUi] = useState(false);
 
   const sessionRef = useRef<RecorderSession | null>(null);
   const preflightSessionRef = useRef<RecorderSession | null>(null);
@@ -131,7 +132,10 @@ export default function RecordPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const nextMode = normalizeMode(params.get("mode"));
+    const advancedRequested =
+      params.get("advanced") === "1" || nextMode === "multiseat" || nextMode === "scout";
     setMode(nextMode);
+    setShowAdvancedUi(advancedRequested);
     refreshSessionContext();
 
     if (!hasCompletedSetup()) {
@@ -535,7 +539,9 @@ export default function RecordPage() {
     [activeSessionId, sessionRefreshTick]
   );
   const recentModeRuns = sessionModeRuns.slice(0, 3);
-  const compareHref = `/compare?mode=${mode}${activeSessionId ? `&session=${encodeURIComponent(activeSessionId)}` : ""}`;
+  const advancedUiEnabled = showAdvancedUi || mode === "multiseat" || mode === "scout";
+  const compareBasePath = advancedUiEnabled ? "/advanced/compare" : "/compare";
+  const compareHref = `${compareBasePath}?mode=${mode}${activeSessionId ? `&session=${encodeURIComponent(activeSessionId)}` : ""}`;
 
   if (setupGate === "checking") {
     return (
@@ -558,6 +564,7 @@ export default function RecordPage() {
         {activeSessionName ? <p className="muted">Session: {activeSessionName}</p> : null}
       </header>
 
+      {advancedUiEnabled ? (
       <section className={`panel ${styles.sessionPanel}`}>
         <h2 className={styles.sessionTitle}>Session Context</h2>
         <p className="muted">
@@ -617,8 +624,9 @@ export default function RecordPage() {
           )}
         </div>
       </section>
+      ) : null}
 
-      {guidedSession ? (
+      {advancedUiEnabled && guidedSession ? (
         <section className={`${styles.guidedPanel} panel`}>
           <h2 className={styles.guidedTitle}>Guided Session Active</h2>
           <p className={styles.guidedText}>
@@ -666,7 +674,7 @@ export default function RecordPage() {
       </section>
 
       <section className={styles.controls} style={{ marginTop: 12 }}>
-        {phase === "idle" ? (
+        {phase === "idle" && advancedUiEnabled ? (
           <div className={styles.preflightPanel}>
             <p className={styles.preflightTitle}>Quick Preflight (optional, 10s)</p>
             <p className={styles.preflightText}>
@@ -728,7 +736,11 @@ export default function RecordPage() {
           </button>
         ) : null}
 
-        <Link href={`/setup?mode=${mode}`} className="cta ctaSecondary" style={{ textAlign: "center" }}>
+        <Link
+          href={`/setup?mode=${mode}${advancedUiEnabled ? "&advanced=1" : ""}`}
+          className="cta ctaSecondary"
+          style={{ textAlign: "center" }}
+        >
           Open Setup Checks
         </Link>
       </section>

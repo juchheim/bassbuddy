@@ -7,23 +7,14 @@
   gap: 10px;
 }
 
-.lockSummary {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  padding: 8px;
-  display: grid;
-  gap: 4px;
-}
-
-.lockControls {
-  margin-top: 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  padding: 10px;
+.modeSwitches {
   display: grid;
   gap: 8px;
+}
+
+.recommendation {
+  margin: 0;
+  font-weight: 700;
 }
 
 .rowActions {
@@ -31,55 +22,12 @@
   gap: 8px;
 }
 
-.qualityPanel {
-  display: grid;
-  gap: 8px;
-}
-
-.seatGrid {
-  display: grid;
-  gap: 8px;
-}
-
-.scoutGrid {
-  display: grid;
-  gap: 8px;
-}
-
-.seatCard {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  padding: 8px;
-  display: grid;
-  gap: 4px;
-}
-
-.scoutCard {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel-soft);
-  padding: 10px;
-  display: grid;
-  gap: 4px;
-}
-
-.seatTitle {
-  margin: 0;
-  font-weight: 700;
-}
-
-.recommendation {
-  margin: 0;
-  line-height: 1.4;
-}
-
 @media (min-width: 760px) {
-  .seatGrid {
+  .modeSwitches {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .scoutGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .rowActions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

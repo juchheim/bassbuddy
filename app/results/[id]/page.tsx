@@ -56,6 +56,7 @@ export default function ResultsPage() {
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
   const nextGuidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
+  const advancedMode = run?.mode === "multiseat" || run?.mode === "scout";
 
   if (!run) {
     return (
@@ -81,6 +82,10 @@ export default function ResultsPage() {
         ? guidedSession.steps.map((step) => step.label)
         : Array.from({ length: SCOUT_MAX_CANDIDATES }, (_, index) => scoutLabel(index + 1))
       : [];
+  const nextRecordHref = `/record?mode=${run.mode}${advancedMode ? "&advanced=1" : ""}`;
+  const compareHref = `/${advancedMode ? "advanced/compare" : "compare"}?mode=${run.mode}${
+    run.sessionId ? `&session=${encodeURIComponent(run.sessionId)}` : ""
+  }`;
 
   return (
     <main className="pageContainer">
@@ -169,21 +174,17 @@ export default function ResultsPage() {
         ))}
 
         {guidedSession && !guidedComplete ? (
-          <Link href={`/record?mode=${run.mode}`} className="cta" style={{ textAlign: "center" }}>
+          <Link href={nextRecordHref} className="cta" style={{ textAlign: "center" }}>
             Continue Guided Session
           </Link>
         ) : (
-          <Link href={`/setup?mode=${run.mode}`} className="cta" style={{ textAlign: "center" }}>
+          <Link href={nextRecordHref} className="cta" style={{ textAlign: "center" }}>
             Run Another Measurement
           </Link>
         )}
 
         {runCountInMode >= 2 ? (
-          <Link
-            href={`/compare?mode=${run.mode}${run.sessionId ? `&session=${encodeURIComponent(run.sessionId)}` : ""}`}
-            className="cta ctaSecondary"
-            style={{ textAlign: "center" }}
-          >
+          <Link href={compareHref} className="cta ctaSecondary" style={{ textAlign: "center" }}>
             Go to Compare
           </Link>
         ) : null}
@@ -198,9 +199,7 @@ export default function ResultsPage() {
 
             const removed = deleteRun(run.id);
             if (removed) {
-              router.push(
-                `/compare?mode=${run.mode}${run.sessionId ? `&session=${encodeURIComponent(run.sessionId)}` : ""}`
-              );
+              router.push(compareHref);
             }
           }}
         >
