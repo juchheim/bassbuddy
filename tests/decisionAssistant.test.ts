@@ -115,7 +115,7 @@ describe("reportPrintText", () => {
 
     const text = reportPrintText(report);
 
-    expect(text).toContain("BassBuddy Final Decision Report");
+    expect(text).toContain("SubSpot Final Decision Report");
     expect(text).toContain("Placement");
     expect(text).toContain("Next Actions");
   });

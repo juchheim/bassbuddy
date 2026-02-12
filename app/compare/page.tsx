@@ -188,7 +188,7 @@ export default function ComparePage() {
 
       <section style={{ marginTop: 12 }}>
         <div className={styles.rowActions}>
-          <Link href={recordHref} className="cta" style={{ textAlign: "center" }}>
+          <Link href={recordHref} className="cta ctaHighlight" style={{ textAlign: "center" }}>
             Run Another Measurement
           </Link>
           <Link href="/" className="cta ctaSecondary" style={{ textAlign: "center" }}>

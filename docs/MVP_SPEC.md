@@ -1,7 +1,7 @@
-# BassBuddy (MVP) Specification
+# SubSpot (MVP) Specification
 
 ## Product Goal
-BassBuddy is a browser-based sub placement coach that uses a phone/laptop microphone to compare bass smoothness at a listening position. In about 5 minutes, a user should be able to:
+SubSpot is a browser-based sub placement coach that uses a phone/laptop microphone to compare bass smoothness at a listening position. In about 5 minutes, a user should be able to:
 
 1. Run a guided measurement from the listening seat.
 2. Compare two sub placements (A/B) and pick a winner.
@@ -31,7 +31,7 @@ This MVP reports relative bass response only and focuses on simple, human-readab
 - User accounts or cloud sync.
 
 ## Audio Test Track
-Single test track `bassbuddy_mvp.wav` in `/public/test-tracks/`.
+Single test track `subspot_mvp.wav` in `/public/test-tracks/`.
 
 ### Layout
 - `0.0-0.5s`: silence
@@ -86,7 +86,7 @@ Winner between two runs:
 - Safari iOS (with warnings where constraints/settings are unavailable)
 
 ## Data Model
-Local storage key: `bassbuddy.v1.runs`.
+Local storage key: `subspot.v1.runs`.
 
 Run fields:
 - `id`, `createdAt`, `mode`, optional `label`

@@ -1,7 +1,7 @@
 import type { DecisionReport } from "@/lib/utils/decisionAssistant";
 import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
 
-export const DECISION_SNAPSHOTS_STORAGE_KEY = "bassbuddy.v1.decisionSnapshots";
+export const DECISION_SNAPSHOTS_STORAGE_KEY = "subspot.v1.decisionSnapshots";
 export const DECISION_SNAPSHOTS_VERSION = 1;
 const MAX_SNAPSHOTS = 30;
 

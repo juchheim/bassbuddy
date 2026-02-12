@@ -30,6 +30,16 @@
 }
 
 .action {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
   font-weight: 700;
   color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 70%, #ffffff 30%);
+}
+
+.actionHighlight {
+  background: var(--accent-orange);
+  color: #ffffff;
 }

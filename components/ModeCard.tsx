@@ -7,15 +7,18 @@ interface ModeCardProps {
   href: string;
   cta: string;
   meta?: string;
+  highlightAction?: boolean;
 }
 
-export function ModeCard({ title, description, href, cta, meta }: ModeCardProps) {
+export function ModeCard({ title, description, href, cta, meta, highlightAction = false }: ModeCardProps) {
+  const actionClass = highlightAction ? `${styles.action} ${styles.actionHighlight}` : styles.action;
+
   return (
     <Link href={href} className={styles.card}>
       <h2 className={styles.title}>{title}</h2>
       <p className={styles.description}>{description}</p>
       {meta ? <p className={styles.meta}>{meta}</p> : null}
-      <span className={styles.action}>{cta}</span>
+      <span className={actionClass}>{cta}</span>
     </Link>
   );
 }

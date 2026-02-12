@@ -4,6 +4,9 @@
 
 .pageTitle {
   margin: 0;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  line-height: 1.2;
+  text-align: center;
 }
 
 .subtitle {

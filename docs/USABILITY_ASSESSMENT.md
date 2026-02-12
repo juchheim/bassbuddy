@@ -1,4 +1,4 @@
-# BassBuddy MVP Usability Assessment (Iteration 1)
+# SubSpot MVP Usability Assessment (Iteration 1)
 
 ## Scope
 Assessment focused on first-run onboarding friction, repeat-use speed, action clarity, and mode-entry flow.
@@ -19,7 +19,7 @@ Assessment focused on first-run onboarding friction, repeat-use speed, action cl
 
 ## UI/UX Changes Implemented
 1. **First-time-only setup completion state**
-- Added UI preference storage (`bassbuddy.v1.uiPrefs`) with versioned schema.
+- Added UI preference storage (`subspot.v1.uiPrefs`) with versioned schema.
 - Setup is now required once per device/browser profile.
 
 2. **Quick Start for returning users**

@@ -65,8 +65,7 @@ export default function HomePage() {
   return (
     <main className="pageContainer">
       <header className={styles.header}>
-        <h1 className={styles.pageTitle}>BassBuddy (MVP)</h1>
-        <p className={styles.subtitle}>Simple sub-placement decisions from your phone/laptop mic.</p>
+        <h1 className={styles.pageTitle}>Simple sub-placement decisions from your phone/laptop mic.</h1>
       </header>
 
       <section className={`panel ${styles.startPanel}`}>
@@ -77,10 +76,10 @@ export default function HomePage() {
         <ol className={styles.steps}>
           <li>Put the mic at the listening seat.</li>
           <li>Play the test track on your main system.</li>
-          <li>Record two options and let BassBuddy pick a winner.</li>
+          <li>Record two options and let SubSpot pick a winner.</li>
         </ol>
         <div className={styles.quickLinks}>
-          <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+          <Link href="/test-track" className="cta ctaHighlight" style={{ textAlign: "center" }}>
             Open Test Track
           </Link>
           <Link href="/advanced" className="cta ctaSecondary" style={{ textAlign: "center" }}>
@@ -96,6 +95,7 @@ export default function HomePage() {
           href={startHref("baseline", setupCompleted)}
           cta={setupCompleted ? "Start Baseline" : "Open Setup"}
           meta={runCountLabel(counts.baseline)}
+          highlightAction
         />
         <ModeCard
           title="Compare Two Placements (A/B)"

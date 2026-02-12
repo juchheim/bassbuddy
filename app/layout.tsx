@@ -3,7 +3,7 @@ import { AppBrand } from "@/components/AppBrand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BassBuddy (MVP)",
+  title: "SubSpot (MVP)",
   description: "Browser-based sub placement coach for quick relative bass smoothness comparisons."
 };
 

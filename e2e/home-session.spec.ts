@@ -4,7 +4,7 @@ import { applySeed } from "./helpers/storageSeed";
 test("home is simple-first and links to advanced tools", async ({ page }) => {
   await applySeed(page);
 
-  await expect(page.getByRole("heading", { name: "BassBuddy (MVP)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Simple sub-placement decisions from your phone/laptop mic." })).toBeVisible();
   await expect(page.getByRole("link", { name: "Start Baseline" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Start A/B" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Start Phase Test" })).toBeVisible();

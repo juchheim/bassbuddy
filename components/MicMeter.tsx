@@ -126,7 +126,7 @@ export function MicMeter({ onSnapshot, onLevelStatus }: MicMeterProps) {
 
   return (
     <div className={styles.wrap}>
-      <button className="cta ctaSecondary" onClick={() => void start()} type="button">
+      <button className="cta ctaHighlight" onClick={() => void start()} type="button">
         {isRunning ? "Re-check Mic" : "Enable Mic Check"}
       </button>
 

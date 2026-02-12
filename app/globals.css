@@ -12,6 +12,7 @@
   --accent-soft: #e1dcf2;
   --accent-soft-strong: #d6cfee;
   --accent-orange: #c57447;
+  --accent-orange-strong: #ad643d;
   --warn: #9f623d;
   --danger: #94455e;
   --danger-strong: #7e344a;
@@ -126,6 +127,15 @@ select:focus-visible {
 
 .ctaSecondary:hover:not(:disabled) {
   background: var(--accent-soft-strong);
+}
+
+.ctaHighlight {
+  background: var(--accent-orange);
+  color: #ffffff;
+}
+
+.ctaHighlight:hover:not(:disabled) {
+  background: var(--accent-orange-strong);
 }
 
 .cta:focus-visible {

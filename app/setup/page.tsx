@@ -120,7 +120,7 @@ export default function SetupPage() {
             <p className="muted" style={{ margin: 0 }}>Last completed: {completedAtDisplay}</p>
             <div className={styles.links}>
               <button
-                className="cta"
+                className="cta ctaHighlight"
                 type="button"
                 onClick={() => {
                   router.push(`/record?mode=${mode}`);
@@ -149,10 +149,10 @@ export default function SetupPage() {
               Recommended workflow: play this track on your main system while recording here.
             </p>
             <div className={styles.links}>
-              <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+              <Link href="/test-track" className="cta ctaHighlight" style={{ textAlign: "center" }}>
                 Open Test Track
               </Link>
-              <a href="/test-tracks/bassbuddy_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
+              <a href="/test-tracks/subspot_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
                 Download WAV Test Track
               </a>
             </div>
@@ -185,10 +185,10 @@ export default function SetupPage() {
               Recommended workflow: play this track on your main system while recording here.
             </p>
             <div className={styles.links}>
-              <Link href="/test-track" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+              <Link href="/test-track" className="cta ctaHighlight" style={{ textAlign: "center" }}>
                 Open Test Track
               </Link>
-              <a href="/test-tracks/bassbuddy_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
+              <a href="/test-tracks/subspot_mvp.wav" className="cta ctaSecondary" download style={{ textAlign: "center" }}>
                 Download WAV Test Track
               </a>
             </div>
@@ -196,7 +196,7 @@ export default function SetupPage() {
 
           <section style={{ marginTop: 12 }}>
             <button
-              className="cta"
+              className="cta ctaHighlight"
               type="button"
               disabled={!canContinue}
               onClick={() => {

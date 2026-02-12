@@ -1,4 +1,4 @@
-# BassBuddy Measurement Guide (MVP)
+# SubSpot Measurement Guide (MVP)
 
 ## Before You Start
 - Place your phone/laptop at the main listening position.
@@ -7,10 +7,10 @@
 - Disable voice isolation/noise suppression modes if your device allows.
 
 ## Recommended Setup
-1. Open BassBuddy on the device used as measurement microphone.
+1. Open SubSpot on the device used as measurement microphone.
 2. Open the ~75s test track on your playback system (TV/streamer/other laptop).
-3. In BassBuddy, complete mic level check and confirm no clipping.
-4. Start listening in BassBuddy, then play the test track.
+3. In SubSpot, complete mic level check and confirm no clipping.
+4. Start listening in SubSpot, then play the test track.
 
 ## Measurement Modes
 - **Quick Baseline**: capture one reference run.

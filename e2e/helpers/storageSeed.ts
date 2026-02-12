@@ -2,11 +2,11 @@ import type { Page } from "@playwright/test";
 
 export const LIVING_SESSION_ID = "session-living";
 
-const RUNS_STORAGE_KEY = "bassbuddy.v1.runs";
-const SESSIONS_STORAGE_KEY = "bassbuddy.v1.experimentSessions";
-const UI_PREFS_STORAGE_KEY = "bassbuddy.v1.uiPrefs";
-const DECISION_SNAPSHOTS_STORAGE_KEY = "bassbuddy.v1.decisionSnapshots";
-const GUIDED_SESSION_KEY = "bassbuddy.v1.guidedSession";
+const RUNS_STORAGE_KEY = "subspot.v1.runs";
+const SESSIONS_STORAGE_KEY = "subspot.v1.experimentSessions";
+const UI_PREFS_STORAGE_KEY = "subspot.v1.uiPrefs";
+const DECISION_SNAPSHOTS_STORAGE_KEY = "subspot.v1.decisionSnapshots";
+const GUIDED_SESSION_KEY = "subspot.v1.guidedSession";
 
 const TEST_FREQS = [25, 31.5, 40, 50, 63, 80, 100, 125];
 

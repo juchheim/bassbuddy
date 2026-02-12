@@ -49,7 +49,7 @@ export interface ImportGuidedSessionResult {
   active: boolean;
 }
 
-const GUIDED_SESSION_KEY = "bassbuddy.v1.guidedSession";
+const GUIDED_SESSION_KEY = "subspot.v1.guidedSession";
 const GUIDED_SESSION_VERSION = 1;
 
 function clampRepeats(repeatsPerSide: number): number {

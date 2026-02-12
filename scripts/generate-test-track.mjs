@@ -104,7 +104,7 @@ function writeWavMono16(samples, sr, outPath) {
   fs.writeFileSync(outPath, out);
 }
 
-const outputPath = path.resolve("public/test-tracks/bassbuddy_mvp.wav");
+const outputPath = path.resolve("public/test-tracks/subspot_mvp.wav");
 writeWavMono16(signal, sampleRate, outputPath);
 
 console.log(`Generated: ${outputPath}`);

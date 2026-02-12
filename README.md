@@ -1,6 +1,6 @@
-# BassBuddy (MVP)
+# SubSpot (MVP)
 
-BassBuddy is a browser-based **Sub Placement Coach** that uses a phone/laptop microphone to compare bass smoothness at a listening position.
+SubSpot is a browser-based **Sub Placement Coach** that uses a phone/laptop microphone to compare bass smoothness at a listening position.
 
 This MVP is intentionally relative and decision-focused:
 - Measure one run quickly.
@@ -25,7 +25,7 @@ This MVP is intentionally relative and decision-focused:
 - Supports Decision Snapshots so you can track recommendation changes before/after placement moves.
 - Supports named experiment sessions; new runs and decision snapshots attach to the active session.
 - Supports session-scoped winner lock-in (placement + phase + notes) so you can persist a chosen baseline.
-- Stores up to 50 runs in `localStorage` (`bassbuddy.v1.runs`) with migration stub.
+- Stores up to 50 runs in `localStorage` (`subspot.v1.runs`) with migration stub.
 - Home focuses on three primary flows: Baseline, A/B, and Phase.
 
 ## What It Does Not Do
@@ -85,7 +85,7 @@ This MVP is intentionally relative and decision-focused:
   ```
 
 ## Test Track Details
-File: `public/test-tracks/bassbuddy_mvp.wav`
+File: `public/test-tracks/subspot_mvp.wav`
 
 - Sample rate: 48 kHz
 - Duration: ~75 seconds
@@ -97,7 +97,7 @@ File: `public/test-tracks/bassbuddy_mvp.wav`
   - Each step: `0.25s silence + 4.0s tone + 0.25s silence`
 
 ## Measurement Workflow (MVP)
-1. Open BassBuddy on phone/laptop at listening seat.
+1. Open SubSpot on phone/laptop at listening seat.
 2. Pick mode:
    - Baseline
    - A/B placement compare

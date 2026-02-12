@@ -1,7 +1,7 @@
 import type { BassRun, RunMode, RunsStoreV1 } from "@/lib/types";
 import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
 
-export const RUNS_STORAGE_KEY = "bassbuddy.v1.runs";
+export const RUNS_STORAGE_KEY = "subspot.v1.runs";
 export const RUNS_STORE_VERSION = 1;
 const MAX_RUNS = 50;
 const VALID_MODES: RunMode[] = ["baseline", "ab", "phase", "multiseat", "scout"];

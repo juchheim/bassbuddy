@@ -174,11 +174,11 @@ export default function ResultsPage() {
         ))}
 
         {guidedSession && !guidedComplete ? (
-          <Link href={nextRecordHref} className="cta" style={{ textAlign: "center" }}>
+          <Link href={nextRecordHref} className="cta ctaHighlight" style={{ textAlign: "center" }}>
             Continue Guided Session
           </Link>
         ) : (
-          <Link href={nextRecordHref} className="cta" style={{ textAlign: "center" }}>
+          <Link href={nextRecordHref} className="cta ctaHighlight" style={{ textAlign: "center" }}>
             Run Another Measurement
           </Link>
         )}

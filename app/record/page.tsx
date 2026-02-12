@@ -711,7 +711,12 @@ export default function RecordPage() {
         ) : null}
 
         {phase === "idle" ? (
-          <button className="cta" type="button" onClick={() => void beginRecording()} disabled={preflightState === "running"}>
+          <button
+            className="cta ctaHighlight"
+            type="button"
+            onClick={() => void beginRecording()}
+            disabled={preflightState === "running"}
+          >
             Start Listening
           </button>
         ) : null}

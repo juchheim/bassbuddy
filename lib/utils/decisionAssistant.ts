@@ -536,7 +536,7 @@ export function buildDecisionReport(runs: BassRun[]): DecisionReport {
 
 export function reportPrintText(report: DecisionReport): string {
   const lines: string[] = [];
-  lines.push("BassBuddy Final Decision Report");
+  lines.push("SubSpot Final Decision Report");
   lines.push(`Generated: ${new Date(report.generatedAt).toLocaleString()}`);
   lines.push(`Overall confidence: ${report.overallConfidence.toUpperCase()} (${report.overallScore}/100)`);
   lines.push("");

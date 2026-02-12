@@ -1,4 +1,4 @@
-# BassBuddy MVP Task Checklist
+# SubSpot MVP Task Checklist
 
 - [x] Draft product/spec and user measurement guide docs
 - [x] Scaffold Next.js App Router + TypeScript project structure

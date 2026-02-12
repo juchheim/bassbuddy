@@ -21,14 +21,14 @@ import {
   type ImportWinnerLocksResult
 } from "@/lib/storage/winnerLock";
 
-export const SESSION_BUNDLE_TYPE = "bassbuddy.session-bundle.v1";
+export const SESSION_BUNDLE_TYPE = "subspot.session-bundle.v1";
 export const SESSION_BUNDLE_VERSION = 1;
 
 export interface SessionBundleV1 {
   type: typeof SESSION_BUNDLE_TYPE;
   version: typeof SESSION_BUNDLE_VERSION;
   exportedAt: string;
-  app: "BassBuddy (MVP)";
+  app: "SubSpot (MVP)";
   experimentSessions: ReturnType<typeof exportExperimentSessionsPayload>;
   runs: ReturnType<typeof exportRunsPayload>;
   decisionSnapshots: ReturnType<typeof exportDecisionSnapshotsPayload>;
@@ -116,7 +116,7 @@ export function exportSessionBundle(): SessionBundleV1 {
     type: SESSION_BUNDLE_TYPE,
     version: SESSION_BUNDLE_VERSION,
     exportedAt: new Date().toISOString(),
-    app: "BassBuddy (MVP)",
+    app: "SubSpot (MVP)",
     experimentSessions: exportExperimentSessionsPayload(),
     runs: exportRunsPayload(),
     decisionSnapshots: exportDecisionSnapshotsPayload(),

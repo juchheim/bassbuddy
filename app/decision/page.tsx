@@ -42,7 +42,7 @@ function filenameBase(): string {
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const dd = String(now.getDate()).padStart(2, "0");
-  return `bassbuddy-decision-${yyyy}${mm}${dd}`;
+  return `subspot-decision-${yyyy}${mm}${dd}`;
 }
 
 function downloadJson(name: string, payload: unknown): void {
@@ -395,7 +395,7 @@ export default function DecisionPage() {
           className="cta ctaSecondary"
           onClick={() => {
             const payload = {
-              type: "bassbuddy.decision-report.v1",
+              type: "subspot.decision-report.v1",
               sessionId: activeSession?.id,
               sessionName: activeSession?.name,
               report,
@@ -412,7 +412,7 @@ export default function DecisionPage() {
           type="button"
           className="cta ctaSecondary"
           onClick={() => {
-            printSummary("BassBuddy Final Decision Report", reportPrintText(report));
+            printSummary("SubSpot Final Decision Report", reportPrintText(report));
             setMessage("Opened printable summary.");
           }}
         >
@@ -502,7 +502,7 @@ export default function DecisionPage() {
                     className="cta ctaSecondary"
                     onClick={() => {
                       downloadJson(`${filenameBase()}-snapshot.json`, {
-                        type: "bassbuddy.decision-snapshot.v1",
+                        type: "subspot.decision-snapshot.v1",
                         sessionId: activeSession?.id,
                         sessionName: activeSession?.name,
                         snapshot: selectedSnapshot,

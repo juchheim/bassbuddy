@@ -168,7 +168,7 @@ describe("session bundle storage", () => {
       type: SESSION_BUNDLE_TYPE,
       version: SESSION_BUNDLE_VERSION,
       exportedAt: "2026-02-01T12:00:00.000Z",
-      app: "BassBuddy (MVP)" as const,
+      app: "SubSpot (MVP)" as const,
       experimentSessions: {
         version: 1 as const,
         activeSessionId: "session-import",
@@ -276,7 +276,7 @@ describe("session bundle storage", () => {
       type: SESSION_BUNDLE_TYPE,
       version: SESSION_BUNDLE_VERSION,
       exportedAt: "2026-02-01T12:00:00.000Z",
-      app: "BassBuddy (MVP)" as const,
+      app: "SubSpot (MVP)" as const,
       experimentSessions: {
         version: 1 as const,
         activeSessionId: "session-new",

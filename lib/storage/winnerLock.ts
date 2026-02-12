@@ -1,6 +1,6 @@
 import { DEFAULT_EXPERIMENT_SESSION_ID } from "@/lib/constants/sessions";
 
-export const WINNER_LOCKS_STORAGE_KEY = "bassbuddy.v1.winnerLocks";
+export const WINNER_LOCKS_STORAGE_KEY = "subspot.v1.winnerLocks";
 export const WINNER_LOCKS_VERSION = 1;
 const MAX_WINNER_LOCKS = 50;
 const MAX_WINNER_LOCK_HISTORY = 500;

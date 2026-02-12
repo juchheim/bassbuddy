@@ -1,4 +1,4 @@
-export const UI_PREFS_STORAGE_KEY = "bassbuddy.v1.uiPrefs";
+export const UI_PREFS_STORAGE_KEY = "subspot.v1.uiPrefs";
 export const UI_PREFS_VERSION = 1;
 
 export interface UiPrefsV1 {

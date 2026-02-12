@@ -11,10 +11,10 @@ export function AppBrand({ className, priority = false }: AppBrandProps) {
   const classes = className ? `${styles.wrap} ${className}` : styles.wrap;
 
   return (
-    <Link href="/" className={classes} aria-label="BassBuddy home">
+    <Link href="/" className={classes} aria-label="SubSpot home">
       <Image
         src="/branding/logos/subspot-logo.png"
-        alt="BassBuddy"
+        alt="SubSpot"
         width={1024}
         height={1024}
         priority={priority}
