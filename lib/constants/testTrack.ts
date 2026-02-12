@@ -6,11 +6,11 @@ export const TRACK_TIMINGS = {
   beepSec: 0.5,
   postBeepSilenceSec: 0.5,
   preToneSilenceSec: 0.25,
-  toneSec: 4.0,
-  postToneSilenceSec: 0.25,
+  toneSec: 1.25,
+  postToneSilenceSec: 0.1,
   tonePasses: 2,
   tailSilenceSec: 1.5,
-  analysisSettleSec: 0.5,
+  analysisSettleSec: 0.2,
   analysisWindowSec: 0.2
 } as const;
 

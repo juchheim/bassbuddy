@@ -7,6 +7,9 @@ import { ProgressStepper } from "@/components/ProgressStepper";
 import { analyzeRun } from "@/lib/audio/analyzeRun";
 import { detectBeep } from "@/lib/audio/beepDetect";
 import { startRecorder, type RecorderSession } from "@/lib/audio/recorder";
+import { consumePlacementMeasurementRequest, getPlacementMeasurementRequest } from "@/lib/placementMap/measurementBridge";
+import { buildPlacementMeasurementRun } from "@/lib/placementMap/measurementRun";
+import { savePlacementMeasurementRun } from "@/lib/placementMap/store";
 import {
   advanceGuidedSession,
   clearGuidedSession,
@@ -101,6 +104,7 @@ export default function RecordPage() {
   const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
   const [guidedNotice, setGuidedNotice] = useState<string | null>(null);
   const [showAdvancedUi, setShowAdvancedUi] = useState(false);
+  const [placementCaptureMode, setPlacementCaptureMode] = useState(false);
 
   const sessionRef = useRef<RecorderSession | null>(null);
   const preflightSessionRef = useRef<RecorderSession | null>(null);
@@ -134,8 +138,10 @@ export default function RecordPage() {
     const nextMode = normalizeMode(params.get("mode"));
     const advancedRequested =
       params.get("advanced") === "1" || nextMode === "multiseat" || nextMode === "scout";
+    const placementRequested = params.get("placement") === "1";
     setMode(nextMode);
     setShowAdvancedUi(advancedRequested);
+    setPlacementCaptureMode(placementRequested);
     refreshSessionContext();
 
     if (!hasCompletedSetup()) {
@@ -320,6 +326,7 @@ export default function RecordPage() {
       const previousGuidedRuns = (activeGuidedSession?.runIds ?? [])
         .map((runId) => getRunById(runId))
         .filter((entry): entry is BassRun => Boolean(entry));
+      const pendingPlacementRequest = placementCaptureMode ? getPlacementMeasurementRequest() : null;
 
       const notes: string[] = [];
       let quality = evaluateRunQuality({
@@ -391,7 +398,7 @@ export default function RecordPage() {
         sampleRate: session.sampleRate,
         beepDetected: analysis.beepDetected,
         confidence: analysis.confidence,
-        label: guidedStep?.label,
+        label: guidedStep?.label ?? pendingPlacementRequest?.pointLabel,
         measurements: analysis.measurements,
         score: analysis.score,
         highlights: analysis.highlights,
@@ -412,6 +419,33 @@ export default function RecordPage() {
           setGuidedSession(getGuidedSessionForMode(mode));
         }
       }
+
+      const placementRequest = placementCaptureMode ? consumePlacementMeasurementRequest() : null;
+
+      if (placementRequest) {
+        const placement = buildPlacementMeasurementRun({
+          pointId: placementRequest.pointId,
+          sourceRunId: run.id,
+          analysis,
+          samples,
+          sampleRate: session.sampleRate,
+          livePeak: peakLive,
+          liveRms: rmsLive
+        });
+
+        const savedPlacementRun = savePlacementMeasurementRun(placementRequest.sessionId, placement.measurementRun);
+
+        if (savedPlacementRun) {
+          const params = new URLSearchParams({
+            session: placementRequest.sessionId,
+            point: placementRequest.pointId,
+            pmr: savedPlacementRun.id
+          });
+          router.push(`/placement-map?${params.toString()}`);
+          return;
+        }
+      }
+
       router.push(`/results/${run.id}`);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Failed to analyze recording.";
@@ -420,7 +454,7 @@ export default function RecordPage() {
     } finally {
       stoppingRef.current = false;
     }
-  }, [mode, peakLive, rmsLive, router, stopTimer, usedManualStart]);
+  }, [mode, peakLive, placementCaptureMode, rmsLive, router, stopTimer, usedManualStart]);
 
   const beginRecording = useCallback(async () => {
     if (preflightState === "running") {
@@ -523,6 +557,10 @@ export default function RecordPage() {
   }
 
   const showManualStart = phase === "recording" && beepTimeSec === null && elapsedSec >= MANUAL_START_TIMEOUT_SEC;
+  const clippingWarning = peakLive > 0.98 ? "Clipping risk detected. Consider slightly lower playback volume." : null;
+  const quietWarning =
+    rmsLive > 0 && rmsLive < 0.003 ? "Input is very quiet. Measurement confidence may suffer." : null;
+  const manualStartWarning = usedManualStart ? "Manual sync start in use (lower confidence)." : null;
   const guidedProgress = guidedSession ? getGuidedProgress(guidedSession) : null;
   const guidedComplete = guidedSession ? isGuidedSessionComplete(guidedSession) : false;
   const guidedStep = guidedSession ? getCurrentGuidedStep(guidedSession) : null;
@@ -667,10 +705,30 @@ export default function RecordPage() {
         <p className={styles.metrics}>
           Elapsed: {elapsedSec.toFixed(1)}s | Peak: {(peakLive * 100).toFixed(0)}% | RMS: {(rmsLive * 100).toFixed(2)}%
         </p>
-        {peakLive > 0.98 ? <p className="warning">Clipping risk detected. Consider slightly lower playback volume.</p> : null}
-        {rmsLive > 0 && rmsLive < 0.003 ? <p className="warning">Input is very quiet. Measurement confidence may suffer.</p> : null}
-        {usedManualStart ? <p className="warning">Manual sync start in use (lower confidence).</p> : null}
         {beepTimeSec !== null ? <ProgressStepper schedule={schedule} elapsedSec={elapsedSec} /> : null}
+        <div className={styles.liveWarningStack} aria-live="polite">
+          {clippingWarning ? (
+            <p className="warning">{clippingWarning}</p>
+          ) : (
+            <p className={styles.liveWarningPlaceholder} aria-hidden="true">
+              &nbsp;
+            </p>
+          )}
+          {quietWarning ? (
+            <p className="warning">{quietWarning}</p>
+          ) : (
+            <p className={styles.liveWarningPlaceholder} aria-hidden="true">
+              &nbsp;
+            </p>
+          )}
+          {manualStartWarning ? (
+            <p className="warning">{manualStartWarning}</p>
+          ) : (
+            <p className={styles.liveWarningPlaceholder} aria-hidden="true">
+              &nbsp;
+            </p>
+          )}
+        </div>
       </section>
 
       <section className={styles.controls} style={{ marginTop: 12 }}>
@@ -749,6 +807,18 @@ export default function RecordPage() {
           Open Setup Checks
         </Link>
       </section>
+
+      {phase === "idle" && !placementCaptureMode ? (
+        <section className={`panel ${styles.mapCallout}`} style={{ marginTop: 12 }}>
+          <h2 style={{ margin: 0 }}>Try Placement Session</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            Want to optimize placement? Use Placement Map to compare multiple locations and view a heatmap.
+          </p>
+          <Link href="/placement-map" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Placement Session
+          </Link>
+        </section>
+      ) : null}
 
       {error ? <p className="error" style={{ marginTop: 10 }}>{error}</p> : null}
     </main>

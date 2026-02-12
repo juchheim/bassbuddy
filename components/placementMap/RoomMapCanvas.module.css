@@ -1,0 +1,142 @@
+.wrap {
+  position: relative;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 255, 255, 0.45) 0%, transparent 48%),
+    radial-gradient(circle at 82% 84%, rgba(79, 62, 160, 0.08) 0%, transparent 40%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.7) 0%, rgba(239, 233, 247, 0.92) 100%);
+  touch-action: none;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 50%, transparent) 1px, transparent 1px);
+  background-size: 9% 12%;
+  pointer-events: none;
+}
+
+.heatmap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.pin {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 3px 8px rgba(34, 30, 64, 0.28);
+  cursor: grab;
+}
+
+.pinMeasured {
+  width: 22px;
+  height: 22px;
+}
+
+.pinSelected {
+  outline: 2px solid var(--accent-orange);
+  outline-offset: 2px;
+}
+
+.pinQuality {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  border: 1px solid #fff;
+}
+
+.pinLabel {
+  position: absolute;
+  left: 50%;
+  top: 125%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  color: var(--ink);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.75);
+}
+
+.listeningMarker {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.listeningMarker::before,
+.listeningMarker::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background: color-mix(in srgb, var(--series-a) 60%, #ffffff 40%);
+}
+
+.listeningMarker::before {
+  width: 18px;
+  height: 2px;
+}
+
+.listeningMarker::after {
+  width: 2px;
+  height: 18px;
+}
+
+.listeningDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--series-a);
+  border: 1px solid #fff;
+}
+
+.emptyHint {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--muted);
+  font-size: 0.92rem;
+  text-align: center;
+  max-width: 70%;
+  pointer-events: none;
+}
+
+.badge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}

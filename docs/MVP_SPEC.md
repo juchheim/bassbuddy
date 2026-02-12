@@ -41,7 +41,7 @@ Single test track `subspot_mvp.wav` in `/public/test-tracks/`.
   - `[25, 31.5, 40, 50, 63, 80, 100, 125]`
 - Per frequency block:
   - `0.25s` silence
-  - `4.0s` sine tone
+  - `1.25s` sine tone
   - `0.25s` silence
 - Tone sequence is repeated for two passes to improve robustness and make the track ~75s.
 

@@ -20,6 +20,66 @@
   gap: 10px;
 }
 
+.primaryTools {
+  display: grid;
+  gap: 10px;
+}
+
+.toolCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--surface) 0%, var(--panel-soft) 100%);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.toolHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolMeta {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.toolTitle {
+  margin: 0;
+}
+
+.toolDescription {
+  margin: 0;
+  color: var(--muted);
+}
+
+.toolCount {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.newBadge {
+  border: 1px solid color-mix(in srgb, var(--accent-orange) 65%, #fff 35%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-orange) 18%, #fff 82%);
+  color: var(--accent-orange-strong);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+}
+
+.secondaryPanel {
+  margin-top: 12px;
+}
+
 .sectionTitle {
   margin: 0;
 }
@@ -37,6 +97,32 @@
   gap: 8px;
 }
 
+.quickLinksSection {
+  border-top: 1px solid color-mix(in srgb, var(--border) 82%, #fff 18%);
+  margin-top: 6px;
+  padding-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.quickLinksLabel {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trackButton {
+  background: #35206f;
+  color: #ffffff;
+}
+
+.trackButton:hover {
+  background: #281553;
+}
+
 .disclaimer {
   margin-top: 14px;
   line-height: 1.4;
@@ -49,6 +135,10 @@
 }
 
 @media (min-width: 760px) {
+  .primaryTools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .quickLinks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

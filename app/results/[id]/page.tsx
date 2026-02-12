@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ResponseChart } from "@/components/ResponseChart";
 import { SummaryCard } from "@/components/SummaryCard";
+import { importQuickTestIntoPlacementSession } from "@/lib/placementMap/importRun";
 import { MULTI_SEAT_LABELS } from "@/lib/constants/multiSeat";
 import { SCOUT_MAX_CANDIDATES, scoutLabel } from "@/lib/constants/scout";
 import {
@@ -28,6 +29,7 @@ export default function ResultsPage() {
 
   const [run, setRun] = useState<BassRun | null>(null);
   const [guidedSession, setGuidedSession] = useState<GuidedSessionV1 | null>(null);
+  const [placementImportError, setPlacementImportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!runId) {
@@ -191,6 +193,28 @@ export default function ResultsPage() {
 
         <button
           type="button"
+          className="cta ctaSecondary"
+          onClick={() => {
+            try {
+              const imported = importQuickTestIntoPlacementSession(run);
+              setPlacementImportError(null);
+              router.push(
+                `/placement-map?session=${encodeURIComponent(imported.sessionId)}&point=${encodeURIComponent(
+                  imported.pointId
+                )}&pmr=${encodeURIComponent(imported.measurementRunId)}`
+              );
+            } catch (caught) {
+              const message =
+                caught instanceof Error ? caught.message : "Could not move this run into a placement session.";
+              setPlacementImportError(message);
+            }
+          }}
+        >
+          Use This Test In Placement Session
+        </button>
+
+        <button
+          type="button"
           className="cta ctaDanger"
           onClick={() => {
             if (!window.confirm("Delete this run?")) {
@@ -210,6 +234,11 @@ export default function ResultsPage() {
           Home
         </Link>
       </section>
+      {placementImportError ? (
+        <p className="error" style={{ marginTop: 10 }}>
+          {placementImportError}
+        </p>
+      ) : null}
     </main>
   );
 }

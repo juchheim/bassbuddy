@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ModeCard } from "@/components/ModeCard";
+import { listPlacementSessions } from "@/lib/placementMap/store";
 import { listRuns } from "@/lib/storage/runsStore";
 import { hasCompletedSetup } from "@/lib/storage/uiPrefs";
 import type { RunMode } from "@/lib/types";
@@ -12,6 +13,7 @@ interface RunCounts {
   baseline: number;
   ab: number;
   phase: number;
+  placementSessions: number;
   total: number;
 }
 
@@ -24,6 +26,7 @@ function readCounts(): RunCounts {
     baseline: listRuns("baseline").length,
     ab: listRuns("ab").length,
     phase: listRuns("phase").length,
+    placementSessions: listPlacementSessions().length,
     total: listRuns().length
   };
 }
@@ -31,7 +34,7 @@ function readCounts(): RunCounts {
 export default function HomePage() {
   const [setupCompleted, setSetupCompleted] = useState(false);
   const [ready, setReady] = useState(false);
-  const [counts, setCounts] = useState<RunCounts>({ baseline: 0, ab: 0, phase: 0, total: 0 });
+  const [counts, setCounts] = useState<RunCounts>({ baseline: 0, ab: 0, phase: 0, placementSessions: 0, total: 0 });
 
   useEffect(() => {
     const refresh = () => {
@@ -65,38 +68,63 @@ export default function HomePage() {
   return (
     <main className="pageContainer">
       <header className={styles.header}>
-        <h1 className={styles.pageTitle}>Simple sub-placement decisions from your phone/laptop mic.</h1>
+        <h1 className={styles.pageTitle}>Choose Your Primary Tool</h1>
       </header>
 
       <section className={`panel ${styles.startPanel}`}>
-        <h2 className={styles.sectionTitle}>Start Here</h2>
+        <h2 className={styles.sectionTitle}>Tool Picker</h2>
         <p className="muted" style={{ margin: 0 }}>
-          {setupText}
+          {setupText} Pick the fastest flow for what you are trying to do right now.
         </p>
-        <ol className={styles.steps}>
-          <li>Put the mic at the listening seat.</li>
-          <li>Play the test track on your main system.</li>
-          <li>Record two options and let SubSpot pick a winner.</li>
-        </ol>
-        <div className={styles.quickLinks}>
-          <Link href="/test-track" className="cta ctaHighlight" style={{ textAlign: "center" }}>
-            Open Test Track
-          </Link>
-          <Link href="/advanced" className="cta ctaSecondary" style={{ textAlign: "center" }}>
-            Advanced Tools
-          </Link>
+        <div className={styles.primaryTools}>
+          <article className={styles.toolCard}>
+            <p className={styles.toolMeta}>Quick</p>
+            <h3 className={styles.toolTitle}>Run Audio Test</h3>
+            <p className={styles.toolDescription}>Measure a single position fast. Great for quick checks.</p>
+            <p className={styles.toolCount}>{runCountLabel(counts.baseline)}</p>
+            <Link
+              href={startHref("baseline", setupCompleted)}
+              className="cta ctaHighlight"
+              style={{ textAlign: "center" }}
+            >
+              {setupCompleted ? "Start Test" : "Open Setup"}
+            </Link>
+          </article>
+          <article className={styles.toolCard}>
+            <div className={styles.toolHeaderRow}>
+              <p className={styles.toolMeta}>Session</p>
+              <span className={styles.newBadge}>NEW</span>
+            </div>
+            <h3 className={styles.toolTitle}>Placement Map + Heatmap</h3>
+            <p className={styles.toolDescription}>Test multiple placements and visualize best spots.</p>
+            <p className={styles.toolCount}>
+              {counts.placementSessions} placement session{counts.placementSessions === 1 ? "" : "s"}
+            </p>
+            <Link href="/placement-map" className="cta ctaHighlight" style={{ textAlign: "center" }}>
+              Start Session
+            </Link>
+          </article>
+        </div>
+        <div className={styles.quickLinksSection}>
+          <p className={styles.quickLinksLabel}>Support Tools</p>
+          <div className={styles.quickLinks}>
+            <Link href="/test-track" className={`cta ${styles.trackButton}`} style={{ textAlign: "center" }}>
+              Open Test Track
+            </Link>
+            <Link href="/advanced" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+              Advanced Tools
+            </Link>
+          </div>
         </div>
       </section>
 
+      <section className={`panel ${styles.secondaryPanel}`}>
+        <h2 className={styles.sectionTitle}>More Compare Tools</h2>
+        <p className="muted" style={{ margin: "6px 0 0" }}>
+          Use these after quick captures when you want focused A/B or phase decisions.
+        </p>
+      </section>
       <section className="grid two" style={{ marginTop: 12 }}>
-        <ModeCard
-          title="Quick Baseline Measurement"
-          description="Capture one run and review bass smoothness at the seat."
-          href={startHref("baseline", setupCompleted)}
-          cta={setupCompleted ? "Start Baseline" : "Open Setup"}
-          meta={runCountLabel(counts.baseline)}
-          highlightAction
-        />
         <ModeCard
           title="Compare Two Placements (A/B)"
           description="Measure placement A and B, then get a clear winner."

@@ -1,0 +1,421 @@
+{
+  "type": "subspot.session-bundle.v1",
+  "version": 1,
+  "exportedAt": "2026-02-11T23:24:50.448Z",
+  "app": "SubSpot (MVP)",
+  "experimentSessions": {
+    "version": 1,
+    "sessions": [
+      {
+        "id": "session-living",
+        "name": "Living Room Test",
+        "createdAt": "2026-02-01T00:10:00.000Z",
+        "updatedAt": "2026-02-01T12:00:00.000Z"
+      },
+      {
+        "id": "session-default",
+        "name": "Default Session",
+        "createdAt": "2026-02-01T00:00:00.000Z",
+        "updatedAt": "2026-02-01T00:00:00.000Z"
+      }
+    ],
+    "activeSessionId": "session-living"
+  },
+  "runs": {
+    "version": 1,
+    "exportedAt": "2026-02-11T23:24:50.449Z",
+    "runs": [
+      {
+        "id": "phase-180",
+        "createdAt": "2026-02-01T11:05:00.000Z",
+        "mode": "phase",
+        "label": "Phase 180",
+        "sessionId": "session-living",
+        "deviceInfo": {
+          "userAgent": "playwright",
+          "platform": "test"
+        },
+        "micSettings": {
+          "requested": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "supported": {
+            "echoCancellation": true,
+            "noiseSuppression": true,
+            "autoGainControl": true
+          },
+          "settings": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "capabilities": {},
+          "processingRisk": "low",
+          "warnings": []
+        },
+        "sampleRate": 48000,
+        "beepDetected": true,
+        "confidence": "high",
+        "measurements": [
+          {
+            "freqHz": 25,
+            "levelRaw": -29.5,
+            "levelRelDb": 0.5
+          },
+          {
+            "freqHz": 31.5,
+            "levelRaw": -29,
+            "levelRelDb": 1
+          },
+          {
+            "freqHz": 40,
+            "levelRaw": -28.5,
+            "levelRelDb": 1.5
+          },
+          {
+            "freqHz": 50,
+            "levelRaw": -28,
+            "levelRelDb": 2
+          },
+          {
+            "freqHz": 63,
+            "levelRaw": -29,
+            "levelRelDb": 1
+          },
+          {
+            "freqHz": 80,
+            "levelRaw": -30,
+            "levelRelDb": 0
+          },
+          {
+            "freqHz": 100,
+            "levelRaw": -31,
+            "levelRelDb": -1
+          },
+          {
+            "freqHz": 125,
+            "levelRaw": -31.5,
+            "levelRelDb": -1.5
+          }
+        ],
+        "score": 19,
+        "highlights": {
+          "worstPeakHz": 50,
+          "worstDipHz": 125,
+          "maxPeakDb": 2,
+          "maxDipDb": -1.6,
+          "deepDipCount": 0,
+          "bigPeakCount": 0
+        },
+        "quality": {
+          "score": 92,
+          "tier": "excellent",
+          "blocking": false,
+          "issues": []
+        },
+        "medianRawLevelDb": -30,
+        "beepToneLevelDb": -20,
+        "volumeAnchorDb": -30
+      },
+      {
+        "id": "phase-0",
+        "createdAt": "2026-02-01T11:00:00.000Z",
+        "mode": "phase",
+        "label": "Phase 0",
+        "sessionId": "session-living",
+        "deviceInfo": {
+          "userAgent": "playwright",
+          "platform": "test"
+        },
+        "micSettings": {
+          "requested": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "supported": {
+            "echoCancellation": true,
+            "noiseSuppression": true,
+            "autoGainControl": true
+          },
+          "settings": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "capabilities": {},
+          "processingRisk": "low",
+          "warnings": []
+        },
+        "sampleRate": 48000,
+        "beepDetected": true,
+        "confidence": "high",
+        "measurements": [
+          {
+            "freqHz": 25,
+            "levelRaw": -29,
+            "levelRelDb": 1
+          },
+          {
+            "freqHz": 31.5,
+            "levelRaw": -28,
+            "levelRelDb": 2
+          },
+          {
+            "freqHz": 40,
+            "levelRaw": -27,
+            "levelRelDb": 3
+          },
+          {
+            "freqHz": 50,
+            "levelRaw": -26,
+            "levelRelDb": 4
+          },
+          {
+            "freqHz": 63,
+            "levelRaw": -28,
+            "levelRelDb": 2
+          },
+          {
+            "freqHz": 80,
+            "levelRaw": -30,
+            "levelRelDb": 0
+          },
+          {
+            "freqHz": 100,
+            "levelRaw": -32,
+            "levelRelDb": -2
+          },
+          {
+            "freqHz": 125,
+            "levelRaw": -33,
+            "levelRelDb": -3
+          }
+        ],
+        "score": 34,
+        "highlights": {
+          "worstPeakHz": 50,
+          "worstDipHz": 125,
+          "maxPeakDb": 4,
+          "maxDipDb": -3,
+          "deepDipCount": 0,
+          "bigPeakCount": 0
+        },
+        "quality": {
+          "score": 92,
+          "tier": "excellent",
+          "blocking": false,
+          "issues": []
+        },
+        "medianRawLevelDb": -30,
+        "beepToneLevelDb": -20,
+        "volumeAnchorDb": -30
+      },
+      {
+        "id": "ab-b",
+        "createdAt": "2026-02-01T10:05:00.000Z",
+        "mode": "ab",
+        "label": "Placement B",
+        "sessionId": "session-living",
+        "deviceInfo": {
+          "userAgent": "playwright",
+          "platform": "test"
+        },
+        "micSettings": {
+          "requested": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "supported": {
+            "echoCancellation": true,
+            "noiseSuppression": true,
+            "autoGainControl": true
+          },
+          "settings": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "capabilities": {},
+          "processingRisk": "low",
+          "warnings": []
+        },
+        "sampleRate": 48000,
+        "beepDetected": true,
+        "confidence": "high",
+        "measurements": [
+          {
+            "freqHz": 25,
+            "levelRaw": -29,
+            "levelRelDb": 1
+          },
+          {
+            "freqHz": 31.5,
+            "levelRaw": -28.5,
+            "levelRelDb": 1.5
+          },
+          {
+            "freqHz": 40,
+            "levelRaw": -28,
+            "levelRelDb": 2
+          },
+          {
+            "freqHz": 50,
+            "levelRaw": -27.5,
+            "levelRelDb": 2.5
+          },
+          {
+            "freqHz": 63,
+            "levelRaw": -29,
+            "levelRelDb": 1
+          },
+          {
+            "freqHz": 80,
+            "levelRaw": -30.5,
+            "levelRelDb": -0.5
+          },
+          {
+            "freqHz": 100,
+            "levelRaw": -31,
+            "levelRelDb": -1
+          },
+          {
+            "freqHz": 125,
+            "levelRaw": -32,
+            "levelRelDb": -2
+          }
+        ],
+        "score": 18,
+        "highlights": {
+          "worstPeakHz": 50,
+          "worstDipHz": 125,
+          "maxPeakDb": 2.5,
+          "maxDipDb": -2.1,
+          "deepDipCount": 0,
+          "bigPeakCount": 0
+        },
+        "quality": {
+          "score": 92,
+          "tier": "excellent",
+          "blocking": false,
+          "issues": []
+        },
+        "medianRawLevelDb": -30,
+        "beepToneLevelDb": -20,
+        "volumeAnchorDb": -30
+      },
+      {
+        "id": "ab-a",
+        "createdAt": "2026-02-01T10:00:00.000Z",
+        "mode": "ab",
+        "label": "Placement A",
+        "sessionId": "session-living",
+        "deviceInfo": {
+          "userAgent": "playwright",
+          "platform": "test"
+        },
+        "micSettings": {
+          "requested": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "supported": {
+            "echoCancellation": true,
+            "noiseSuppression": true,
+            "autoGainControl": true
+          },
+          "settings": {
+            "echoCancellation": false,
+            "noiseSuppression": false,
+            "autoGainControl": false
+          },
+          "capabilities": {},
+          "processingRisk": "low",
+          "warnings": []
+        },
+        "sampleRate": 48000,
+        "beepDetected": true,
+        "confidence": "high",
+        "measurements": [
+          {
+            "freqHz": 25,
+            "levelRaw": -28,
+            "levelRelDb": 2
+          },
+          {
+            "freqHz": 31.5,
+            "levelRaw": -27,
+            "levelRelDb": 3
+          },
+          {
+            "freqHz": 40,
+            "levelRaw": -25,
+            "levelRelDb": 5
+          },
+          {
+            "freqHz": 50,
+            "levelRaw": -24,
+            "levelRelDb": 6
+          },
+          {
+            "freqHz": 63,
+            "levelRaw": -28,
+            "levelRelDb": 2
+          },
+          {
+            "freqHz": 80,
+            "levelRaw": -31,
+            "levelRelDb": -1
+          },
+          {
+            "freqHz": 100,
+            "levelRaw": -34,
+            "levelRelDb": -4
+          },
+          {
+            "freqHz": 125,
+            "levelRaw": -36,
+            "levelRelDb": -6
+          }
+        ],
+        "score": 42,
+        "highlights": {
+          "worstPeakHz": 50,
+          "worstDipHz": 125,
+          "maxPeakDb": 6.1,
+          "maxDipDb": -6.2,
+          "deepDipCount": 1,
+          "bigPeakCount": 1
+        },
+        "quality": {
+          "score": 92,
+          "tier": "excellent",
+          "blocking": false,
+          "issues": []
+        },
+        "medianRawLevelDb": -30,
+        "beepToneLevelDb": -20,
+        "volumeAnchorDb": -30
+      }
+    ]
+  },
+  "decisionSnapshots": {
+    "version": 1,
+    "snapshots": []
+  },
+  "winnerLocks": {
+    "version": 1,
+    "locks": [],
+    "history": []
+  },
+  "guidedSession": null,
+  "uiPrefs": {
+    "version": 1,
+    "setupCompleted": true,
+    "setupCompletedAt": "2026-02-01T00:10:00.000Z"
+  }
+}

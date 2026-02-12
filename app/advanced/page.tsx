@@ -54,6 +54,9 @@ export default function AdvancedToolsPage() {
           <Link href={advancedCompare} className="cta ctaSecondary" style={{ textAlign: "center" }}>
             Open Advanced Compare
           </Link>
+          <Link href="/placement-map" className="cta ctaSecondary" style={{ textAlign: "center" }}>
+            Open Placement Map
+          </Link>
           <Link href="/decision" className="cta ctaSecondary" style={{ textAlign: "center" }}>
             Final Decision Assistant
           </Link>

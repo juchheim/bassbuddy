@@ -88,13 +88,13 @@ This MVP is intentionally relative and decision-focused:
 File: `public/test-tracks/subspot_mvp.wav`
 
 - Sample rate: 48 kHz
-- Duration: ~75 seconds
+- Duration: ~29 seconds
 - Sequence:
   - 0.0-0.5s silence
   - 0.5-1.0s 1 kHz sync beep
   - 1.0-1.5s silence
   - Two passes of tone steps: `25, 31.5, 40, 50, 63, 80, 100, 125 Hz`
-  - Each step: `0.25s silence + 4.0s tone + 0.25s silence`
+  - Each step: `0.25s silence + 1.25s tone + 0.10s silence`
 
 ## Measurement Workflow (MVP)
 1. Open SubSpot on phone/laptop at listening seat.
